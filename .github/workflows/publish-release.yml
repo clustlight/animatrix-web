@@ -1,0 +1,42 @@
+name: Publish Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        type: string
+        description: 'Release Version. For example, `1.2.8`'
+        required: true
+        default: ''
+      draft:
+        type: boolean
+        description: 'Draft'
+        default: false
+      prerelease:
+        type: boolean
+        description: 'Pre-release'
+        default: false
+
+jobs:
+  publish_release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create tag
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git switch main
+          git tag v${{ github.event.inputs.version }}
+          git push origin --tags
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          generate_release_notes: true
+          name: v${{ github.event.inputs.version }}
+          tag_name: v${{ github.event.inputs.version }}
+          draft: ${{ github.event.inputs.draft }}
+          prerelease: ${{ github.event.inputs.prerelease }}
