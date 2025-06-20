@@ -1,11 +1,13 @@
 name: Publish Container Image
 
 on:
-  push:
-    branches-ignore:
-      - '**'
-    tags:
-      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        type: string
+        description: 'Release Version. For example, `1.2.8`'
+        required: true
+        default: ''
 
 jobs:
   build:
