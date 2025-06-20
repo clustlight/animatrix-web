@@ -7,7 +7,7 @@ import advancedFormat from 'dayjs/plugin/advancedFormat'
 import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
 import React, { useState } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { Link } from 'react-router'
 import VideoPlayer from '~/components/player/VideoPlayer'
 import { getApiBaseUrl } from '../lib/config'
 
@@ -206,14 +206,6 @@ export default function Episode({
         <p>{loaderData.error}</p>
       </main>
     )
-  }
-
-  const [searchParams, setSearchParams] = React.useState('')
-  const navigate = useNavigate()
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter' && searchParams.trim()) {
-      navigate(`/search?q=${encodeURIComponent(searchParams.trim())}`)
-    }
   }
 
   const { seriesData, seasonData, episodeData } = loaderData as {
