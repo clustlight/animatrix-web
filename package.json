@@ -12,14 +12,12 @@
     "prettier:fix": "prettier --write \"./**/*.{ts,tsx}\""
   },
   "dependencies": {
-    "@radix-ui/react-slot": "^1.2.3",
     "@react-router/node": "^7.5.3",
     "@react-router/serve": "^7.5.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dayjs": "^1.11.13",
     "isbot": "^5.1.27",
-    "lucide-react": "^0.515.0",
     "media-chrome": "^4.11.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",

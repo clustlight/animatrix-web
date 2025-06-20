@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { Input } from '../components/ui/input'
 import { getApiBaseUrl } from '../lib/config'
 import type { Episode, Series } from '../types'
 import type { Route } from './+types/home'
+import { Search } from '~/components/ui/Search'
 
 // Fetch Series information by seriesId
 async function fetchSeries(seriesId: string): Promise<Series | null> {
@@ -180,12 +180,11 @@ export default function Home() {
           <h1 className='text-2xl font-bold'>animatrix-web</h1>
         </header>
         <div className='max-w-[1200px] w-full space-y-6 px-4'>
-          <Input
-            type='text'
-            placeholder='Search by series or episode name'
+          <Search
             value={searchParams}
             onChange={e => setSearchParams(e.target.value)}
             onKeyDown={handleKeyDown}
+            placeholder='Search by series or episode name'
           />
         </div>
         <EpisodeCarousel

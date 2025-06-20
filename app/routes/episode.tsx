@@ -9,9 +9,8 @@ import utc from 'dayjs/plugin/utc'
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import VideoPlayer from '~/components/player/VideoPlayer'
-import { Button } from '../components/ui/button'
-import { Input } from '../components/ui/input'
 import { getApiBaseUrl } from '../lib/config'
+import { Search } from '~/components/ui/Search'
 
 dayjs.extend(relativeTime)
 dayjs.locale('ja')
@@ -241,12 +240,11 @@ export default function Episode({
     <main className='flex flex-col items-center pt-8 pb-4 min-h-screen bg-black'>
       {/* Search bar */}
       <div className='w-full max-w-xl mx-auto mt-2 mb-2 px-2'>
-        <Input
-          type='text'
-          placeholder='Search by series or episode name'
+        <Search
           value={searchParams}
           onChange={e => setSearchParams(e.target.value)}
           onKeyDown={handleKeyDown}
+          placeholder='Search by series or episode name'
         />
       </div>
 
@@ -268,14 +266,14 @@ export default function Episode({
             </div>
             {/* ...ダウンロードボタン等... */}
             <div className='flex flex-col sm:flex-row items-start mt-4 gap-4'>
-              <Button
+              <button
                 onClick={download}
                 disabled={progress !== null}
                 className='ml-0 cursor-pointer transition-colors bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded shadow'
                 style={{ pointerEvents: progress !== null ? 'none' : 'auto' }}
               >
                 Download Video
-              </Button>
+              </button>
               <div className='flex flex-col items-start gap-1 min-w-[180px] self-center'>
                 {progress !== null && (
                   <div className='w-44 flex flex-col justify-center mt-2'>
@@ -341,14 +339,14 @@ export default function Episode({
               )}
             </div>
             <div className='flex flex-col sm:flex-row items-start mt-4 gap-4'>
-              <Button
+              <button
                 onClick={download}
                 disabled={progress !== null}
                 className='ml-0 cursor-pointer transition-colors bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded shadow'
                 style={{ pointerEvents: progress !== null ? 'none' : 'auto' }}
               >
                 Download Video
-              </Button>
+              </button>
               <div className='flex flex-col items-start gap-1 min-w-[180px] self-center'>
                 {progress !== null && (
                   <div className='w-44 flex flex-col justify-center mt-2'>
