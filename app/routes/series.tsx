@@ -194,7 +194,7 @@ export default function Series({ loaderData }: Route.ComponentProps) {
   }
 
   React.useEffect(() => {
-    document.title = `${data.title} | animatrix-web`
+    document.title = `${data.title} | animatrix`
   }, [data.title])
 
   return (

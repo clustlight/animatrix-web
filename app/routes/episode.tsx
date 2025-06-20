@@ -214,9 +214,8 @@ export default function Episode({
     episodeData: Episode
   }
 
-  // Set page title to "title | animatrix-web"
   React.useEffect(() => {
-    document.title = `${episodeData.title} | animatrix-web`
+    document.title = `${episodeData.title} | animatrix`
   }, [episodeData.title])
 
   const seasonList: Season[] = seriesData.seasons || []

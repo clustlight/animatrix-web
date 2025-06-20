@@ -17,7 +17,7 @@ async function fetchSeries(seriesId: string): Promise<Series | null> {
 }
 
 export function meta({}: Route.MetaArgs) {
-  return [{ title: 'animatrix-web' }, { name: 'description', content: 'ABM archive-player web' }]
+  return [{ title: 'animatrix' }, { name: 'description', content: 'ABM archive-player web' }]
 }
 
 // Carousel for latest episodes

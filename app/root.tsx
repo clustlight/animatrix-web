@@ -79,7 +79,7 @@ export default function App() {
         }}
         aria-label='Go to home'
       >
-        animatrix-web
+        animatrix
       </Link>
       {/* Search bar: fixed at the top center of the screen */}
       <div
