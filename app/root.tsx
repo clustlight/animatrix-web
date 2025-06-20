@@ -56,10 +56,21 @@ export default function App() {
 
   return (
     <div className='relative min-h-screen bg-black'>
+      {/* Header background only */}
+      <div
+        className='fixed top-0 left-0 w-screen z-40'
+        style={{
+          minHeight: '70px',
+          height: '70px', // Make the background taller to cover logo and search bar
+          background: 'rgba(17, 24, 39, 0.92)', // Tailwind's gray-900 with opacity
+          boxShadow: '0 2px 8px #0008',
+          backdropFilter: 'blur(6px)'
+        }}
+      />
       {/* Logo */}
       <Link
         to='/'
-        className='fixed top-8 left-8 z-50 flex items-center text-xl font-bold text-white hover:text-blue-400 transition-colors cursor-pointer select-none'
+        className='fixed top-3 left-8 z-50 flex items-center text-xl font-bold text-white hover:text-blue-400 transition-colors cursor-pointer select-none'
         style={{
           textShadow: '0 2px 8px #0008',
           padding: '0.25rem 0.75rem',
@@ -72,7 +83,7 @@ export default function App() {
       </Link>
       {/* Search bar: fixed at the top center of the screen */}
       <div
-        className='fixed top-8 left-1/2 -translate-x-1/2 z-40 w-full max-w-xl px-2 flex items-center'
+        className='fixed top-3 left-1/2 -translate-x-1/2 z-40 w-full max-w-xl px-2 flex items-center'
         style={{ height: '48px' }}
       >
         <Search
@@ -83,7 +94,7 @@ export default function App() {
         />
       </div>
       {/* Main content */}
-      <div className='pt-28'>
+      <div className='pt-20'>
         <Outlet />
       </div>
     </div>
