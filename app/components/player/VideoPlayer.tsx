@@ -1,4 +1,4 @@
-import { Spinner } from 'components/ui/kibo-ui/spinner'
+import { FaSpinner } from 'react-icons/fa'
 import type React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import type { MouseEvent, ReactNode } from 'react'
@@ -151,7 +151,12 @@ export default function VideoPlayer({ url }: { url: string }) {
       {/* Loading spinner */}
       {!isReady && (
         <div className='absolute inset-0 bg-neutral-900 flex items-center justify-center z-10 text-neutral-400 text-2xl pointer-events-none select-none'>
-          <Spinner variant='bars' />
+          <FaSpinner
+            size={32}
+            color={'#888'}
+            className="animate-spin align-middle"
+            aria-label="Loading"
+          />
         </div>
       )}
       {/* Video */}
