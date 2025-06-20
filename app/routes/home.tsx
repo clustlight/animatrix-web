@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { Link } from 'react-router'
 import { getApiBaseUrl } from '../lib/config'
 import type { Episode, Series } from '../types'
 import type { Route } from './+types/home'
-import { Search } from '~/components/ui/Search'
 
 // Fetch Series information by seriesId
 async function fetchSeries(seriesId: string): Promise<Series | null> {
@@ -107,18 +106,9 @@ function EpisodeCarousel({
 }
 
 export default function Home() {
-  const navigate = useNavigate()
-  const [searchParams, setSearchParams] = useState('')
   const [recentEpisodes, setRecentEpisodes] = useState<Episode[]>([])
   const [seriesMap, setSeriesMap] = useState<Record<string, Series>>({})
   const carouselRef = useRef<HTMLDivElement>(null)
-
-  // Handle Enter key in the search box
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter' && searchParams.trim()) {
-      navigate(`/search?q=${encodeURIComponent(searchParams.trim())}`)
-    }
-  }
 
   // Fetch the latest episodes (up to 20, sorted by timestamp descending)
   useEffect(() => {
@@ -173,19 +163,8 @@ export default function Home() {
   }, [])
 
   return (
-    <main className='flex items-center justify-center pt-16 pb-4'>
+    <main className='flex items-center justify-center pt-1 pb-4'>
       <div className='flex-1 flex flex-col items-center gap-16 min-h-0'>
-        <header className='flex flex-col items-center gap-9'>
-          <h1 className='text-2xl font-bold'>animatrix-web</h1>
-        </header>
-        <div className='max-w-[1200px] w-full space-y-6 px-4'>
-          <Search
-            value={searchParams}
-            onChange={e => setSearchParams(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder='Search by series or episode name'
-          />
-        </div>
         <EpisodeCarousel
           episodes={recentEpisodes}
           seriesMap={seriesMap}

@@ -1,7 +1,9 @@
-import { Links, Meta, Outlet, Scripts, ScrollRestoration, isRouteErrorResponse } from 'react-router'
+import { Links, Meta, Outlet, Scripts, ScrollRestoration, isRouteErrorResponse, useNavigate, Link } from 'react-router'
 
 import type { Route } from './+types/root'
 import './app.css'
+import { Search } from './components/ui/Search'
+import React from 'react'
 
 export const links: Route.LinksFunction = () => [
   { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
@@ -35,7 +37,40 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  return <Outlet />
+  const [searchParams, setSearchParams] = React.useState('')
+  const navigate = useNavigate()
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter' && searchParams.trim()) {
+      navigate(`/search?q=${encodeURIComponent(searchParams.trim())}`)
+    }
+  }
+
+  return (
+    <div className="relative min-h-screen bg-black">
+      {/* Logo */}
+      <Link
+        to="/"
+        className="fixed top-8 left-8 z-50 flex items-center text-xl font-bold text-white hover:text-blue-400 transition-colors cursor-pointer select-none"
+        style={{ textShadow: '0 2px 8px #0008', padding: '0.25rem 0.75rem', borderRadius: '0.5rem', height: '48px' }}
+        aria-label="Go to home"
+      >
+        animatrix-web
+      </Link>
+      {/* Search bar: fixed at the top center of the screen */}
+      <div className="fixed top-8 left-1/2 -translate-x-1/2 z-40 w-full max-w-xl px-2 flex items-center" style={{ height: '48px' }}>
+        <Search
+          value={searchParams}
+          onChange={e => setSearchParams(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Search by series or episode name"
+        />
+      </div>
+      {/* Main content */}
+      <div className="pt-28">
+        <Outlet />
+      </div>
+    </div>
+  )
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {

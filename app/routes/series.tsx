@@ -198,19 +198,17 @@ export default function Series({ loaderData }: Route.ComponentProps) {
   }, [data.title])
 
   return (
-    <main className='flex items-center justify-center pt-16 pb-4'>
+    <main className='flex items-center justify-center pt-1 pb-4'>
       <div className='flex-1 flex flex-col items-center gap-16 min-h-0'>
-        <header className='flex flex-col gap-9 mx-auto items-start'>
-          <div className='flex items-center gap-12'>
-            <img
-              src={data.portrait_url}
-              alt={data.title}
-              className='w-32 h-44 object-cover rounded shadow'
-            />
-            <h1 className='text-2xl font-bold'>{data.title}</h1>
-          </div>
-        </header>
-        <div className='w-full max-w-2xl px-4'>
+        <div className='flex items-center gap-12'>
+          <img
+            src={data.portrait_url}
+            alt={data.title}
+            className='w-32 h-44 object-cover rounded shadow'
+          />
+          <h1 className='text-2xl font-bold'>{data.title}</h1>
+        </div>
+        <div className='w-full max-w-2xl px-2'>
           <SeasonTabs
             seasons={seasons}
             activeSeason={activeSeason}

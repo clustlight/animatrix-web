@@ -10,7 +10,6 @@ import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import VideoPlayer from '~/components/player/VideoPlayer'
 import { getApiBaseUrl } from '../lib/config'
-import { Search } from '~/components/ui/Search'
 
 dayjs.extend(relativeTime)
 dayjs.locale('ja')
@@ -237,17 +236,7 @@ export default function Episode({
   const isIpadProPortrait = useIsIpadProPortrait()
 
   return (
-    <main className='flex flex-col items-center pt-8 pb-4 min-h-screen bg-black'>
-      {/* Search bar */}
-      <div className='w-full max-w-xl mx-auto mt-2 mb-2 px-2'>
-        <Search
-          value={searchParams}
-          onChange={e => setSearchParams(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder='Search by series or episode name'
-        />
-      </div>
-
+    <main className='flex flex-col items-center pt-2 pb-4 min-h-screen bg-black'>
       {/* Breadcrumbs + broadcast date */}
       <Breadcrumbs seriesData={seriesData} seasonData={seasonData} episodeData={episodeData} />
 
