@@ -1,4 +1,4 @@
-import type React from 'react'
+import React, { useRef, useEffect } from 'react'
 
 type VideoPlayerVolumeBarProps = {
   volume: number // Volume value (0 to 1)
@@ -11,27 +11,39 @@ export default function VideoPlayerVolumeBar({
   onVolumeChange,
   onDrag
 }: VideoPlayerVolumeBarProps) {
+  const barRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = barRef.current
+    if (!el) return
+
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      const delta = e.deltaY < 0 ? 0.05 : -0.05
+      let newVolume = volume + delta
+      newVolume = Math.max(0, Math.min(1, newVolume))
+      if (newVolume !== volume) {
+        onVolumeChange(Number(newVolume.toFixed(2)))
+      }
+    }
+
+    el.addEventListener('wheel', handleWheel, { passive: false })
+    return () => el.removeEventListener('wheel', handleWheel)
+  }, [volume, onVolumeChange])
+
   // Handle drag start
   const handleDragStart = () => onDrag?.(true)
 
   // Handle drag end
   const handleDragEnd = () => onDrag?.(false)
 
-  // Handle mouse wheel volume adjustment
-  const handleWheel = (e: React.WheelEvent<HTMLInputElement>) => {
-    e.preventDefault()
-    const delta = e.deltaY < 0 ? 0.1 : -0.1
-    const newVolume = Math.max(0, Math.min(1, volume + delta))
-    onVolumeChange(Number(newVolume.toFixed(2)))
-  }
-
-  // Handle slider change
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onVolumeChange(Number(e.target.value))
-  }
-
   return (
-    <div className='flex items-center gap-2'>
+    <div
+      ref={barRef}
+      className='flex items-center gap-2'
+      style={{ minHeight: 32, alignItems: 'center' }}
+    >
       <input
         tabIndex={-1}
         type='range'
@@ -39,13 +51,12 @@ export default function VideoPlayerVolumeBar({
         max={1}
         step={0.01}
         value={volume}
-        onChange={handleChange}
+        onChange={e => onVolumeChange(Number(e.target.value))}
         className='w-32 h-1.5 accent-orange-500 cursor-pointer'
         onMouseDown={handleDragStart}
         onMouseUp={handleDragEnd}
         onTouchStart={handleDragStart}
         onTouchEnd={handleDragEnd}
-        onWheel={handleWheel}
       />
     </div>
   )
