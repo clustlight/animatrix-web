@@ -159,7 +159,6 @@ export default function Home() {
       })
       setSeriesMap(newMap)
     })
-     
   }, [recentEpisodes])
 
   // Scroll the carousel left or right

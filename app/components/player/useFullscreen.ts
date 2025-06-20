@@ -15,11 +15,17 @@ function getFullscreenElement(): Element | null {
 // Request fullscreen for an element (cross-browser)
 function requestFullscreen(el: HTMLElement) {
   if (el.requestFullscreen) return el.requestFullscreen()
-  if ((el as HTMLElement & { webkitRequestFullscreen?: () => Promise<void> }).webkitRequestFullscreen) {
-    return (el as HTMLElement & { webkitRequestFullscreen: () => Promise<void> }).webkitRequestFullscreen()
+  if (
+    (el as HTMLElement & { webkitRequestFullscreen?: () => Promise<void> }).webkitRequestFullscreen
+  ) {
+    return (
+      el as HTMLElement & { webkitRequestFullscreen: () => Promise<void> }
+    ).webkitRequestFullscreen()
   }
   if ((el as HTMLElement & { mozRequestFullScreen?: () => Promise<void> }).mozRequestFullScreen) {
-    return (el as HTMLElement & { mozRequestFullScreen: () => Promise<void> }).mozRequestFullScreen()
+    return (
+      el as HTMLElement & { mozRequestFullScreen: () => Promise<void> }
+    ).mozRequestFullScreen()
   }
   if ((el as HTMLElement & { msRequestFullscreen?: () => Promise<void> }).msRequestFullscreen) {
     return (el as HTMLElement & { msRequestFullscreen: () => Promise<void> }).msRequestFullscreen()
@@ -29,11 +35,17 @@ function requestFullscreen(el: HTMLElement) {
 // Exit fullscreen mode (cross-browser)
 function exitFullscreen() {
   if (document.exitFullscreen) return document.exitFullscreen()
-  if ((document as Document & { webkitExitFullscreen?: () => Promise<void> }).webkitExitFullscreen) {
-    return (document as Document & { webkitExitFullscreen: () => Promise<void> }).webkitExitFullscreen()
+  if (
+    (document as Document & { webkitExitFullscreen?: () => Promise<void> }).webkitExitFullscreen
+  ) {
+    return (
+      document as Document & { webkitExitFullscreen: () => Promise<void> }
+    ).webkitExitFullscreen()
   }
   if ((document as Document & { mozCancelFullScreen?: () => Promise<void> }).mozCancelFullScreen) {
-    return (document as Document & { mozCancelFullScreen: () => Promise<void> }).mozCancelFullScreen()
+    return (
+      document as Document & { mozCancelFullScreen: () => Promise<void> }
+    ).mozCancelFullScreen()
   }
   if ((document as Document & { msExitFullscreen?: () => Promise<void> }).msExitFullscreen) {
     return (document as Document & { msExitFullscreen: () => Promise<void> }).msExitFullscreen()

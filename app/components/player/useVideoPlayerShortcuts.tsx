@@ -160,8 +160,7 @@ export function useVideoPlayerShortcuts({
 
     // Register keydown event
     window.addEventListener('keydown', handleKeyDown, { capture: true })
-    return () =>
-      window.removeEventListener('keydown', handleKeyDown, { capture: true })
+    return () => window.removeEventListener('keydown', handleKeyDown, { capture: true })
   }, [
     playerRef,
     duration,

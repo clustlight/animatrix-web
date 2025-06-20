@@ -154,8 +154,8 @@ export default function VideoPlayer({ url }: { url: string }) {
           <FaSpinner
             size={32}
             color={'#888'}
-            className="animate-spin align-middle"
-            aria-label="Loading"
+            className='animate-spin align-middle'
+            aria-label='Loading'
           />
         </div>
       )}
