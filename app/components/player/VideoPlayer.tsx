@@ -10,6 +10,11 @@ import { usePersistedVolume } from './usePersistedVolume'
 import { useVideoPlayerShortcuts } from './useVideoPlayerShortcuts'
 import { useInputFocus } from './useInputFocus'
 
+// HTMLVideoElementにwebkitEnterFullscreenを追加
+interface HTMLVideoElementWithWebkit extends HTMLVideoElement {
+  webkitEnterFullscreen?: () => void
+}
+
 // Video player component
 export default function VideoPlayer({ url }: { url: string }) {
   const playerRef = useRef<ReactPlayer>(null as unknown as ReactPlayer)
@@ -138,6 +143,35 @@ export default function VideoPlayer({ url }: { url: string }) {
   // UI visibility condition
   const isUIVisible = isFullscreen ? hovered && !fadeOut : hovered || !playing
 
+  // モバイルでネイティブ全画面APIが使えるか判定
+  function isMobileNativeFullscreenSupported() {
+    if (typeof navigator === 'undefined') return false
+    return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+  }
+
+  // 全画面ボタン押下時
+  const handleFullscreen = () => {
+    const isMobile = isMobileNativeFullscreenSupported()
+    const videoEl = playerRef.current?.getInternalPlayer?.(
+      'video'
+    ) as HTMLVideoElementWithWebkit | null
+
+    if (isMobile && videoEl) {
+      // iOS Safari
+      if (typeof videoEl.webkitEnterFullscreen === 'function') {
+        videoEl.webkitEnterFullscreen()
+        return
+      }
+      // Android Chromeなど
+      if (typeof videoEl.requestFullscreen === 'function') {
+        videoEl.requestFullscreen()
+        return
+      }
+    }
+    // PCやモバイル以外はカスタムフルスクリーン
+    toggleFullscreen()
+  }
+
   // Render
   return (
     <div
@@ -188,7 +222,7 @@ export default function VideoPlayer({ url }: { url: string }) {
           playing={playing}
           onPlayPause={handlePlayPause}
           onSeek={handleSeek}
-          onFullscreen={toggleFullscreen}
+          onFullscreen={handleFullscreen}
           currentTime={currentTime}
           duration={duration}
           volume={volume}
