@@ -22,6 +22,7 @@ type UseVideoPlayerShortcutsProps = {
   setPlaybackRate: React.Dispatch<React.SetStateAction<number>>
   playbackRate: number
   onActionIcon?: (icon: React.ReactNode, text?: string) => void
+  disable?: boolean
 }
 
 const SEEK_STEP = 10
@@ -47,9 +48,11 @@ export function useVideoPlayerShortcuts({
   shortcutActiveSetter,
   setPlaybackRate,
   playbackRate,
-  onActionIcon
+  onActionIcon,
+  disable = false
 }: UseVideoPlayerShortcutsProps) {
   useEffect(() => {
+    if (disable) return
     // Seek video by seconds
     const seek = (seconds: number, icon: React.ReactNode) => {
       const player = playerRef.current
@@ -170,6 +173,7 @@ export function useVideoPlayerShortcuts({
     shortcutActiveSetter,
     setPlaybackRate,
     playbackRate,
-    onActionIcon
+    onActionIcon,
+    disable
   ])
 }

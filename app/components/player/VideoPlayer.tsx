@@ -8,6 +8,7 @@ import { useFadeUI } from './useFadeUI'
 import { useFullscreen } from './useFullscreen'
 import { usePersistedVolume } from './usePersistedVolume'
 import { useVideoPlayerShortcuts } from './useVideoPlayerShortcuts'
+import { useInputFocus } from './useInputFocus'
 
 // Video player component
 export default function VideoPlayer({ url }: { url: string }) {
@@ -35,6 +36,7 @@ export default function VideoPlayer({ url }: { url: string }) {
   const { fadeOut, hovered, setHovered, setShortcutActive } = useFadeUI({
     isFullscreen
   })
+  const inputFocused = useInputFocus()
 
   // Keyboard shortcuts
   useVideoPlayerShortcuts({
@@ -49,7 +51,8 @@ export default function VideoPlayer({ url }: { url: string }) {
     onActionIcon: (icon: ReactNode, text?: string) => {
       setActionIcon(icon)
       setActionText(text ?? null)
-    }
+    },
+    disable: inputFocused
   })
 
   // Handlers
