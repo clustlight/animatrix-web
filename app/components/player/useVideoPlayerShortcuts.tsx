@@ -7,6 +7,7 @@ import {
   MdReplay10,
   MdReplay30,
   MdVolumeDown,
+  MdVolumeMute,
   MdVolumeUp
 } from 'react-icons/md'
 import type ReactPlayer from 'react-player'
@@ -93,6 +94,28 @@ export function useVideoPlayerShortcuts({
       player.seekTo(percent * duration, 'seconds')
     }
 
+    const toggleMute = () => {
+      setVolume(v => {
+        const isMuted = v === 0
+        let prevVolume = 0.8
+        if (typeof window !== 'undefined') {
+          const stored = localStorage.getItem('prevVolume')
+          const parsed = stored !== null ? Number.parseFloat(stored) : 0.8
+          prevVolume = parsed > 0 ? parsed : 0.8
+        }
+        const newVolume = isMuted ? prevVolume : 0
+        if (onActionIcon) {
+          const icon = newVolume === 0 ? <MdVolumeMute size={48} /> : <MdVolumeUp size={48} />
+          onActionIcon(icon, newVolume == 0 ? '' : `${Math.round(newVolume * 100)}%`)
+        }
+
+        if (!isMuted && typeof window !== 'undefined') {
+          localStorage.setItem('prevVolume', String(v))
+        }
+        return newVolume
+      })
+    }
+
     // Keyboard shortcut definitions
     const keyActions: Array<{
       match: (e: KeyboardEvent) => boolean
@@ -145,6 +168,10 @@ export function useVideoPlayerShortcuts({
       {
         match: e => e.shiftKey && (e.key === '>' || e.key === '.'),
         action: () => adjustPlaybackRate(PLAYBACK_RATE_STEP)
+      },
+      {
+        match: e => e.key === 'm' || e.key === 'M',
+        action: () => toggleMute()
       }
     ]
 
