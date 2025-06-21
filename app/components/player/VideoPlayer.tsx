@@ -1,6 +1,6 @@
 import { FaSpinner } from 'react-icons/fa'
 import type React from 'react'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { MouseEvent, ReactNode } from 'react'
 import ReactPlayer from 'react-player'
 import VideoPlayerControls from './VideoPlayerControls'
@@ -23,6 +23,7 @@ export default function VideoPlayer({ url }: { url: string }) {
   const [volume, setVolume] = usePersistedVolume()
   const [playbackRate, setPlaybackRate] = useState(1.0)
   const [isReady, setIsReady] = useState(false)
+  const [aspectRatio, setAspectRatio] = useState<number | null>(null)
 
   // UI state
   const [actionIcon, setActionIcon] = useState<ReactNode | null>(null)
@@ -132,6 +133,15 @@ export default function VideoPlayer({ url }: { url: string }) {
   // UI visibility condition
   const isUIVisible = isFullscreen ? hovered && !fadeOut : hovered || !playing
 
+  // 動画のアスペクト比を取得
+  const handleReady = useCallback(() => {
+    setIsReady(true)
+    const video = playerRef.current?.getInternalPlayer() as HTMLVideoElement | null
+    if (video && video.videoWidth && video.videoHeight) {
+      setAspectRatio(video.videoWidth / video.videoHeight)
+    }
+  }, [])
+
   // --- Render ---
   return (
     <div
@@ -141,9 +151,16 @@ export default function VideoPlayer({ url }: { url: string }) {
       onMouseLeave={handleMouseLeave}
       className={`
         relative w-full mx-auto bg-black outline-none
-        ${isFullscreen ? 'h-screen' : 'aspect-video min-h-[240px]'}
+        ${isFullscreen ? 'h-screen' : ''}
       `}
       tabIndex={0}
+      style={
+        !isFullscreen && aspectRatio
+          ? { aspectRatio: `${aspectRatio}` }
+          : !isFullscreen
+            ? { aspectRatio: '16/9', minHeight: 240 }
+            : undefined
+      }
     >
       {/* Loading spinner */}
       {!isReady && (
@@ -170,7 +187,7 @@ export default function VideoPlayer({ url }: { url: string }) {
         onDuration={setDuration}
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
-        onReady={() => setIsReady(true)}
+        onReady={handleReady}
         style={{ position: 'absolute', inset: 0 }}
       />
       {/* Action overlay */}

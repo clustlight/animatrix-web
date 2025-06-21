@@ -1,7 +1,6 @@
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
-import { useEffect, useRef, useState } from 'react'
-import type { RefObject } from 'react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import type { Episode, Season, Series } from '../types'
 import type { Route } from './+types/series'
@@ -9,7 +8,6 @@ import 'dayjs/locale/ja'
 import advancedFormat from 'dayjs/plugin/advancedFormat'
 import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
-import React from 'react'
 import { getApiBaseUrl } from '../lib/config'
 
 dayjs.extend(relativeTime)
@@ -49,25 +47,26 @@ function SeasonTabs({
 }: SeasonTabsProps) {
   return (
     <div className='relative mb-6'>
-      <button
-        type='button'
-        className='absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-gray-800 bg-opacity-80 hover:bg-opacity-100 rounded-full p-1 shadow transition-colors'
-        style={{ display: seasons.length > 3 ? 'block' : 'none' }}
-        onClick={() => scrollTabs('left')}
-        aria-label='scroll left'
-      >
-        <svg width={24} height={24} fill='none' viewBox='0 0 24 24'>
-          <path
-            d='M15 6l-6 6 6 6'
-            stroke='#fff'
-            strokeWidth={2}
-            strokeLinecap='round'
-            strokeLinejoin='round'
-          />
-        </svg>
-      </button>
+      {seasons.length > 3 && (
+        <button
+          type='button'
+          className='absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-gray-800 bg-opacity-80 hover:bg-opacity-100 rounded-full p-1 shadow transition-colors'
+          onClick={() => scrollTabs('left')}
+          aria-label='scroll left'
+        >
+          <svg width={24} height={24} fill='none' viewBox='0 0 24 24'>
+            <path
+              d='M15 6l-6 6 6 6'
+              stroke='#fff'
+              strokeWidth={2}
+              strokeLinecap='round'
+              strokeLinejoin='round'
+            />
+          </svg>
+        </button>
+      )}
       <div
-        ref={tabListRef as RefObject<HTMLDivElement>}
+        ref={tabListRef}
         className='flex gap-2 border-b overflow-x-auto scrollbar-hide px-8'
         style={{ scrollBehavior: 'smooth' }}
       >
@@ -91,23 +90,24 @@ function SeasonTabs({
           )
         })}
       </div>
-      <button
-        type='button'
-        className='absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-gray-800 bg-opacity-80 hover:bg-opacity-100 rounded-full p-1 shadow transition-colors'
-        style={{ display: seasons.length > 3 ? 'block' : 'none' }}
-        onClick={() => scrollTabs('right')}
-        aria-label='scroll right'
-      >
-        <svg width={24} height={24} fill='none' viewBox='0 0 24 24'>
-          <path
-            d='M9 6l6 6-6 6'
-            stroke='#fff'
-            strokeWidth={2}
-            strokeLinecap='round'
-            strokeLinejoin='round'
-          />
-        </svg>
-      </button>
+      {seasons.length > 3 && (
+        <button
+          type='button'
+          className='absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-gray-800 bg-opacity-80 hover:bg-opacity-100 rounded-full p-1 shadow transition-colors'
+          onClick={() => scrollTabs('right')}
+          aria-label='scroll right'
+        >
+          <svg width={24} height={24} fill='none' viewBox='0 0 24 24'>
+            <path
+              d='M9 6l6 6-6 6'
+              stroke='#fff'
+              strokeWidth={2}
+              strokeLinecap='round'
+              strokeLinejoin='round'
+            />
+          </svg>
+        </button>
+      )}
     </div>
   )
 }
@@ -117,9 +117,16 @@ type EpisodeListProps = {
 }
 
 function EpisodeList({ episodes }: EpisodeListProps) {
+  const [imgErrorMap, setImgErrorMap] = useState<{ [id: string]: boolean }>({})
+
   if (!episodes || episodes.length === 0) {
     return <div className='text-center text-gray-400'>No episodes available</div>
   }
+
+  const handleImgError = (id: string) => {
+    setImgErrorMap(prev => ({ ...prev, [id]: true }))
+  }
+
   return (
     <>
       {episodes.map(ep => (
@@ -130,7 +137,18 @@ function EpisodeList({ episodes }: EpisodeListProps) {
           style={{ maxWidth: '100%' }}
         >
           <div className='relative w-40 h-24 mr-5 flex-shrink-0'>
-            <img src={ep.thumbnail_url} alt={ep.title} className='w-40 h-24 object-cover rounded' />
+            {imgErrorMap[ep.episode_id] || !ep.thumbnail_url ? (
+              <div className='w-40 h-24 bg-gray-700 flex items-center justify-center rounded'>
+                <span className='text-gray-400 text-xs'>No Image</span>
+              </div>
+            ) : (
+              <img
+                src={ep.thumbnail_url}
+                alt={ep.title}
+                className='w-40 h-24 object-cover rounded'
+                onError={() => handleImgError(ep.episode_id)}
+              />
+            )}
             <span className='absolute bottom-1 right-1 bg-black bg-opacity-70 text-xs text-white px-2 py-0.5 rounded'>
               {ep.duration_string}
             </span>
@@ -144,6 +162,25 @@ function EpisodeList({ episodes }: EpisodeListProps) {
         </Link>
       ))}
     </>
+  )
+}
+
+function PortraitImage({ src, alt }: { src?: string; alt: string }) {
+  const [error, setError] = useState(false)
+  if (!src || src === '' || error) {
+    return (
+      <div className='w-36 h-52 bg-gray-700 flex items-center justify-center rounded shadow'>
+        <span className='text-gray-400 text-xs'>No Image</span>
+      </div>
+    )
+  }
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className='w-36 h-52 object-cover rounded shadow'
+      onError={() => setError(true)}
+    />
   )
 }
 
@@ -193,27 +230,31 @@ export default function Series({ loaderData }: Route.ComponentProps) {
     }
   }
 
-  React.useEffect(() => {
+  useEffect(() => {
     document.title = `${data.title} | animatrix`
   }, [data.title])
 
   return (
-    <main className='flex items-center justify-center pt-1 pb-4'>
-      <div className='flex-1 flex flex-col items-center gap-16 min-h-0'>
+    <main className='flex items-center justify-center pt-4 pb-4'>
+      <div className='flex-1 flex flex-col items-center gap-8 min-h-0'>
         <div className='flex items-center gap-12'>
-          <img
-            src={data.portrait_url}
-            alt={data.title}
-            className='w-32 h-44 object-cover rounded shadow'
-          />
-          <h1 className='text-2xl font-bold'>{data.title}</h1>
+          <div className='w-36 h-52 relative flex-shrink-0'>
+            <PortraitImage src={data.portrait_url} alt={data.title} />
+          </div>
+          <div>
+            <h1 className='text-2xl font-bold'>{data.title}</h1>
+            {/* シーズン数・全話数 */}
+            <div className='text-gray-400 text-sm mt-1'>
+              {`シーズン数: ${seasons.length}　全${seasons.reduce((acc, s) => acc + (s.episodes?.length ?? 0), 0)}話`}
+            </div>
+          </div>
         </div>
         <div className='w-full max-w-2xl px-2'>
           <SeasonTabs
             seasons={seasons}
             activeSeason={activeSeason}
             onTabClick={handleTabClick}
-            tabListRef={tabListRef as RefObject<HTMLDivElement | null>}
+            tabListRef={tabListRef}
             scrollTabs={scrollTabs}
           />
           <div className='flex flex-col gap-4'>

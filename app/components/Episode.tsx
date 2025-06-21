@@ -73,7 +73,7 @@ export function EpisodeList({
 
 export function EpisodeTimestamp({ timestamp }: { timestamp: string }) {
   return (
-    <div className='text-xs sm:text-sm font-semibold text-white whitespace-nowrap'>
+    <div className='text-xs sm:text-sm font-semibold text-gray-400 whitespace-nowrap'>
       {`${dayjs(timestamp).format('YYYY/MM/DD HH:mm:ss (zzz)').replace('Japan Standard Time', 'JST')} (${dayjs(timestamp).fromNow()})`}
     </div>
   )

@@ -253,7 +253,7 @@ export default function VideoPlayerControls({
       <div
         data-player-controls
         onClick={e => e.stopPropagation()}
-        className={`${controlsBaseClass} bottom-13 z-30 flex-col gap-2 items-stretch bg-black/30 text-white`}
+        className={`${controlsBaseClass} bottom-13 z-30 flex-col gap-2 bg-black/30 text-white`}
         style={{
           transitionDuration: fadeOut ? '800ms' : '200ms'
         }}

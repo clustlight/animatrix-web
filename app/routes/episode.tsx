@@ -79,7 +79,7 @@ function useEpisodeDownloader(episodeData: Episode) {
 function Breadcrumbs({ seriesData, seasonData }: { seriesData: Series; seasonData: Season }) {
   return (
     <div className='flex flex-col sm:flex-row items-start sm:items-center justify-between mt-2 w-full max-w-10/12 px-3 gap-2'>
-      <nav className='flex items-center text-sm text-gray-400 gap-2'>
+      <nav className='flex items-center gap-2 text-xs sm:text-sm text-gray-400'>
         <Link to={`/series/${seriesData.series_id}`} className='hover:underline text-blue-500'>
           {seriesData.title}
         </Link>
@@ -130,12 +130,9 @@ export default function Episode({
       {/* Breadcrumbs + broadcast date */}
       <Breadcrumbs seriesData={seriesData} seasonData={seasonData} />
 
-      {/* レイアウトは常に1パターンのみ */}
       <div
         className='
           flex flex-col lg:flex-row w-full max-w-10/12 px-2 gap-7 mt-4 flex-1
-          tablet-portrait:flex-col tablet-portrait:max-w-2xl
-          tablet-portrait:gap-3 tablet-portrait:mt-2
         '
       >
         {/* Video and title */}
@@ -149,28 +146,27 @@ export default function Episode({
           <div className='flex items-center text-sm font-semibold mt-0.5'>
             {seriesData.title} <span className='mx-1'>|</span> {seasonData.season_title}
           </div>
-          {/* タイトルと日時を同じ高さで右端に配置（幅が狭い場合は下に表示） */}
           <div className='flex flex-col w-full'>
             <div className='flex items-center justify-between w-full'>
-              <div className='flex items-center text-2xl font-bold mt-0.5'>{episodeData.title}</div>
-              {/* md以上で右端、md未満で非表示 */}
+              <div className='flex items-center text-xl sm:text-2xl font-bold mt-0.5 mb-2'>
+                {episodeData.title}
+              </div>
               <div className='ml-4 hidden md:block'>
                 <EpisodeTimestamp timestamp={episodeData.timestamp} />
               </div>
             </div>
-            {/* md未満でタイトル下に表示 */}
             <div className='block md:hidden mt-1'>
               <EpisodeTimestamp timestamp={episodeData.timestamp} />
             </div>
           </div>
-          <div className='tablet-portrait:mt-1'>
+          <div>
             {episodeData.video_url && (
               <div className='tablet-portrait:w-full'>
                 <VideoPlayer url={episodeData.video_url} />
               </div>
             )}
           </div>
-          <div className='flex flex-col sm:flex-row items-start mt-4 gap-4'>
+          <div className='flex flex-col sm:flex-row items-start mt-2 gap-4'>
             <button
               onClick={download}
               disabled={progress !== null}

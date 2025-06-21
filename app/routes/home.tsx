@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router'
+import { useEffect, useState } from 'react'
 import { getApiBaseUrl } from '../lib/config'
 import type { Episode, Series } from '../types'
 import type { Route } from './+types/home'
+import { SeriesGrid } from '../components/SeriesGrid'
 
 // Fetch Series information by seriesId
 async function fetchSeries(seriesId: string): Promise<Series | null> {
@@ -20,19 +20,7 @@ export function meta({}: Route.MetaArgs) {
   return [{ title: 'animatrix' }, { name: 'description', content: 'ABM archive-player web' }]
 }
 
-// Carousel for latest episodes
-function EpisodeCarousel({
-  episodes,
-  seriesMap,
-  scrollCarousel,
-  carouselRef
-}: {
-  episodes: Episode[]
-  seriesMap: Record<string, Series>
-  scrollCarousel: (dir: 'left' | 'right') => void
-  carouselRef: React.RefObject<HTMLDivElement | null>
-}) {
-  // Only show the latest episode for each series
+function getLatestSeriesList(episodes: Episode[], seriesMap: Record<string, Series>) {
   const seriesLatestEpisodes: { episode: Episode; series: Series }[] = []
   const seenSeries = new Set<string>()
   for (const ep of episodes) {
@@ -42,73 +30,12 @@ function EpisodeCarousel({
       seenSeries.add(seriesId)
     }
   }
-
-  return (
-    <section className='mt-8'>
-      <div className='flex items-center mb-3'>
-        <h2 className='text-lg font-bold mr-4'>Latest Episodes</h2>
-        <button
-          type='button'
-          className='p-1 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors mr-2'
-          onClick={() => scrollCarousel('left')}
-          aria-label='Scroll left'
-        >
-          <svg width={24} height={24} fill='none' viewBox='0 0 24 24'>
-            <path
-              d='M15 6l-6 6 6 6'
-              stroke='#fff'
-              strokeWidth={2}
-              strokeLinecap='round'
-              strokeLinejoin='round'
-            />
-          </svg>
-        </button>
-        <button
-          type='button'
-          className='p-1 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors'
-          onClick={() => scrollCarousel('right')}
-          aria-label='Scroll right'
-        >
-          <svg width={24} height={24} fill='none' viewBox='0 0 24 24'>
-            <path
-              d='M9 6l6 6-6 6'
-              stroke='#fff'
-              strokeWidth={2}
-              strokeLinecap='round'
-              strokeLinejoin='round'
-            />
-          </svg>
-        </button>
-      </div>
-      <div
-        ref={carouselRef}
-        className='flex gap-6 overflow-x-auto scrollbar-hide px-1'
-        style={{ scrollBehavior: 'smooth' }}
-      >
-        {seriesLatestEpisodes.map(({ series }) => (
-          <Link
-            key={series.series_id}
-            to={`/series/${series.series_id}`}
-            className='flex flex-col items-center min-w-[140px] max-w-[140px]'
-            title={series.title}
-          >
-            <img
-              src={series.portrait_url}
-              alt={series.title}
-              className='w-32 h-44 object-cover rounded shadow mb-2'
-            />
-            <span className='text-xs text-gray-200 text-center line-clamp-2'>{series.title}</span>
-          </Link>
-        ))}
-      </div>
-    </section>
-  )
+  return seriesLatestEpisodes.map(({ series }) => series)
 }
 
 export default function Home() {
   const [recentEpisodes, setRecentEpisodes] = useState<Episode[]>([])
   const [seriesMap, setSeriesMap] = useState<Record<string, Series>>({})
-  const carouselRef = useRef<HTMLDivElement>(null)
 
   // Fetch the latest episodes (up to 20, sorted by timestamp descending)
   useEffect(() => {
@@ -151,25 +78,15 @@ export default function Home() {
     })
   }, [recentEpisodes])
 
-  // Scroll the carousel left or right
-  const scrollCarousel = useCallback((dir: 'left' | 'right') => {
-    if (carouselRef.current) {
-      const scrollAmount = 180
-      carouselRef.current.scrollBy({
-        left: dir === 'left' ? -scrollAmount : scrollAmount,
-        behavior: 'smooth'
-      })
-    }
-  }, [])
+  const latestSeriesList = getLatestSeriesList(recentEpisodes, seriesMap)
 
   return (
     <main className='flex items-center justify-center pt-1 pb-4'>
       <div className='flex-1 flex flex-col items-center gap-16 min-h-0'>
-        <EpisodeCarousel
-          episodes={recentEpisodes}
-          seriesMap={seriesMap}
-          scrollCarousel={scrollCarousel}
-          carouselRef={carouselRef}
+        <SeriesGrid
+          seriesList={latestSeriesList}
+          title='Latest Episodes'
+          loading={recentEpisodes.length === 0}
         />
       </div>
     </main>
