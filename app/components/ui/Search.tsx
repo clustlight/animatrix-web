@@ -15,7 +15,7 @@ export const Search: React.FC<SearchProps> = ({ placeholder, value, onChange, on
       value={value}
       onChange={onChange}
       onKeyDown={onKeyDown}
-      className='border rounded px-3 py-2 w-full'
+      className='border rounded px-3 py-2 w-full focus:outline-none focus:ring-orange-400 focus:border-orange-400'
       aria-label={placeholder}
     />
   )
