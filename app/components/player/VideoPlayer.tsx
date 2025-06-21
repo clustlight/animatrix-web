@@ -169,6 +169,7 @@ export default function VideoPlayer({ url }: { url: string }) {
         playing={playing}
         volume={volume}
         controls={false}
+        playsinline
         width='100%'
         height='100%'
         playbackRate={playbackRate}
