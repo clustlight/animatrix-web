@@ -1,15 +1,13 @@
 import type { Episode, Season, Series } from '../types'
 import type { Route } from './+types/episode'
-import React, { useState } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Link } from 'react-router'
 import VideoPlayer from '~/components/player/VideoPlayer'
 import { getApiBaseUrl } from '../lib/config'
 import { EpisodeTimestamp, EpisodeList, SeasonTabs } from '~/components/Episode'
 
 async function fetchJson<T>(url: string): Promise<T> {
-  const res = await fetch(url, {
-    headers: { 'Content-Type': 'application/json' }
-  })
+  const res = await fetch(url, { headers: { 'Content-Type': 'application/json' } })
   if (!res.ok) throw new Error(`API error: ${res.status}`)
   return res.json()
 }
@@ -29,19 +27,24 @@ export async function clientLoader({ params }: Route.LoaderArgs) {
   }
 }
 
-function useEpisodeDownloader(episodeData: Episode) {
+type DownloaderResult = {
+  progress: number | null
+  download: () => Promise<void>
+  downloadUrl: string | null
+  error: string | null
+}
+
+function useEpisodeDownloader(episodeData: Episode): DownloaderResult {
   const [progress, setProgress] = useState<number | null>(null)
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const download = async () => {
+  const download = useCallback(async () => {
     setProgress(0)
     setError(null)
     setDownloadUrl(null)
     try {
-      const res = await fetch(episodeData.video_url, {
-        credentials: 'include'
-      })
+      const res = await fetch(episodeData.video_url, { credentials: 'include' })
       if (!res.body) throw new Error('Streaming is not supported')
       const contentLength = Number(res.headers.get('Content-Length'))
       const reader = res.body.getReader()
@@ -64,10 +67,9 @@ function useEpisodeDownloader(episodeData: Episode) {
     } finally {
       setProgress(null)
     }
-  }
+  }, [episodeData.video_url])
 
-  // Cleanup
-  React.useEffect(() => {
+  useEffect(() => {
     return () => {
       if (downloadUrl) URL.revokeObjectURL(downloadUrl)
     }
@@ -95,11 +97,11 @@ function Breadcrumbs({ seriesData, seasonData }: { seriesData: Series; seasonDat
   )
 }
 
-export default function Episode({
-  loaderData
-}: {
-  loaderData: { seasonData: Season; episodeData: Episode; seriesData: Series } | { error: string }
-}) {
+type LoaderData =
+  | { seasonData: Season; episodeData: Episode; seriesData: Series }
+  | { error: string }
+
+export default function Episode({ loaderData }: { loaderData: LoaderData }) {
   if ('error' in loaderData) {
     return (
       <main className='pt-16 p-4 container mx-auto'>
@@ -109,40 +111,22 @@ export default function Episode({
     )
   }
 
-  const { seriesData, seasonData, episodeData } = loaderData as {
-    seriesData: Series
-    seasonData: Season
-    episodeData: Episode
-  }
-
-  React.useEffect(() => {
+  const { seriesData, seasonData, episodeData } = loaderData
+  useEffect(() => {
     document.title = `${episodeData.title} | animatrix`
   }, [episodeData.title])
 
-  const seasonList: Season[] = seriesData.seasons || []
-  const [selectedSeasonId, setSelectedSeasonId] = React.useState<string>(seasonData.season_id)
+  const seasonList = seriesData.seasons || []
+  const [selectedSeasonId, setSelectedSeasonId] = useState<string>(seasonData.season_id)
   const selectedSeason = seasonList.find(s => s.season_id === selectedSeasonId)
-  const episodeList: Episode[] = selectedSeason?.episodes || []
+  const episodeList = selectedSeason?.episodes || []
   const { progress, download, downloadUrl, error } = useEpisodeDownloader(episodeData)
 
   return (
     <main className='flex flex-col items-center pt-2 pb-4 min-h-screen bg-black'>
-      {/* Breadcrumbs + broadcast date */}
       <Breadcrumbs seriesData={seriesData} seasonData={seasonData} />
-
-      <div
-        className='
-          flex flex-col lg:flex-row w-full max-w-10/12 px-2 gap-7 mt-4 flex-1
-        '
-      >
-        {/* Video and title */}
-        <div
-          className='
-            flex flex-col min-w-0 space-y-2
-            tablet-portrait:w-full
-            flex-1 tablet-portrait:flex-none
-          '
-        >
+      <div className='flex flex-col lg:flex-row w-full max-w-10/12 px-2 gap-4 mt-4'>
+        <div className='flex flex-col min-w-0 space-y-2 tablet-portrait:w-full flex-1 tablet-portrait:flex-none'>
           <div className='flex items-center text-sm font-semibold mt-0.5'>
             {seriesData.title} <span className='mx-1'>|</span> {seasonData.season_title}
           </div>
@@ -151,21 +135,16 @@ export default function Episode({
               <div className='flex items-center text-xl sm:text-2xl font-bold mt-0.5 mb-2'>
                 {episodeData.title}
               </div>
-              <div className='ml-4 hidden md:block'>
+              <div className='ml-4 hidden xl:block'>
                 <EpisodeTimestamp timestamp={episodeData.timestamp} />
               </div>
             </div>
-            <div className='block md:hidden mt-1'>
-              <EpisodeTimestamp timestamp={episodeData.timestamp} />
+          </div>
+          {episodeData.video_url && (
+            <div className='tablet-portrait:w-full'>
+              <VideoPlayer url={episodeData.video_url} />
             </div>
-          </div>
-          <div>
-            {episodeData.video_url && (
-              <div className='tablet-portrait:w-full'>
-                <VideoPlayer url={episodeData.video_url} />
-              </div>
-            )}
-          </div>
+          )}
           <div className='flex flex-col sm:flex-row items-start mt-2 gap-4'>
             <button
               onClick={download}
@@ -201,14 +180,7 @@ export default function Episode({
             </div>
           </div>
         </div>
-
-        {/* Right: season tabs + episode list */}
-        <div
-          className='
-            flex flex-col min-w-0 max-w-md w-full mt-3
-            tablet-portrait:max-w-full tablet-portrait:w-full tablet-portrait:mt-2
-          '
-        >
+        <div className='flex flex-col min-w-0 max-w-md md:w-2/3 w-full'>
           <SeasonTabs
             seasonList={seasonList}
             selectedSeasonId={selectedSeasonId}

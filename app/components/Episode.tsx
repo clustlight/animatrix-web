@@ -50,31 +50,47 @@ export function EpisodeList({
   return (
     <div className='overflow-y-auto' style={{ maxHeight: '70vh' }}>
       {episodeList.map(ep => (
-        <Link
-          to={`/episode/${ep.episode_id}`}
+        <EpisodeListItem
           key={ep.episode_id}
-          className={`flex items-center gap-2 p-2 rounded hover:bg-blue-900 transition ${
-            ep.episode_id === episodeData.episode_id ? 'bg-blue-800' : ''
-          }`}
-        >
-          <img
-            src={ep.thumbnail_url || '/no-thumbnail.png'}
-            alt={ep.title}
-            // Make the thumbnail larger and keep 16:9 aspect ratio
-            className='w-36 h-20 object-cover rounded' // 144x80px (16:9)
-            style={{ aspectRatio: '16/9' }}
-          />
-          <div className='text-base font-semibold text-white truncate'>{ep.title}</div>
-        </Link>
+          episode={ep}
+          isActive={ep.episode_id === episodeData.episode_id}
+        />
       ))}
     </div>
   )
 }
 
+function EpisodeListItem({ episode, isActive }: { episode: Episode; isActive: boolean }) {
+  return (
+    <Link
+      to={`/episode/${episode.episode_id}`}
+      className={`flex items-center gap-2 px-4 py-3 rounded hover:bg-blue-900 transition ${
+        isActive ? 'bg-blue-800' : ''
+      }`}
+    >
+      <img
+        src={episode.thumbnail_url || '/no-thumbnail.png'}
+        alt={episode.title}
+        className='w-12 h-7 sm:w-16 sm:h-9 md:w-20 md:h-11 object-cover rounded'
+        style={{ aspectRatio: '16/9' }}
+      />
+      <div className='text-[11px] sm:text-[15px] lg:text-sm xl:text-sm font-semibold text-white text-wrap'>
+        {episode.title}
+      </div>
+    </Link>
+  )
+}
+
+function formatTimestamp(timestamp: string) {
+  return `${dayjs(timestamp)
+    .format('YYYY/MM/DD HH:mm:ss (zzz)')
+    .replace('Japan Standard Time', 'JST')} (${dayjs(timestamp).fromNow()})`
+}
+
 export function EpisodeTimestamp({ timestamp }: { timestamp: string }) {
   return (
     <div className='text-xs sm:text-sm font-semibold text-gray-400 whitespace-nowrap'>
-      {`${dayjs(timestamp).format('YYYY/MM/DD HH:mm:ss (zzz)').replace('Japan Standard Time', 'JST')} (${dayjs(timestamp).fromNow()})`}
+      {formatTimestamp(timestamp)}
     </div>
   )
 }
