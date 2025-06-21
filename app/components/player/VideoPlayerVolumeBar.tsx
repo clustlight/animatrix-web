@@ -1,9 +1,9 @@
 import React, { useRef, useEffect } from 'react'
 
 type VideoPlayerVolumeBarProps = {
-  volume: number // Volume value (0 to 1)
-  onVolumeChange: (v: number) => void // Volume change handler
-  onDrag?: (dragging: boolean) => void // Optional drag state handler
+  volume: number
+  onVolumeChange: (v: number) => void
+  onDrag?: (dragging: boolean) => void
 }
 
 export default function VideoPlayerVolumeBar({
@@ -21,22 +21,15 @@ export default function VideoPlayerVolumeBar({
       e.preventDefault()
       e.stopPropagation()
       const delta = e.deltaY < 0 ? 0.1 : -0.1
-      let newVolume = volume + delta
-      newVolume = Math.max(0, Math.min(1, newVolume))
-      if (newVolume !== volume) {
-        onVolumeChange(Number(newVolume.toFixed(2)))
-      }
+      const newVolume = Math.max(0, Math.min(1, +(volume + delta).toFixed(2)))
+      if (newVolume !== volume) onVolumeChange(newVolume)
     }
 
     el.addEventListener('wheel', handleWheel, { passive: false })
     return () => el.removeEventListener('wheel', handleWheel)
   }, [volume, onVolumeChange])
 
-  // Handle drag start
-  const handleDragStart = () => onDrag?.(true)
-
-  // Handle drag end
-  const handleDragEnd = () => onDrag?.(false)
+  const handleDrag = (dragging: boolean) => onDrag?.(dragging)
 
   return (
     <div
@@ -53,10 +46,10 @@ export default function VideoPlayerVolumeBar({
         value={volume}
         onChange={e => onVolumeChange(Number(e.target.value))}
         className='w-32 h-1.5 accent-orange-500 cursor-pointer'
-        onMouseDown={handleDragStart}
-        onMouseUp={handleDragEnd}
-        onTouchStart={handleDragStart}
-        onTouchEnd={handleDragEnd}
+        onMouseDown={() => handleDrag(true)}
+        onMouseUp={() => handleDrag(false)}
+        onTouchStart={() => handleDrag(true)}
+        onTouchEnd={() => handleDrag(false)}
       />
     </div>
   )

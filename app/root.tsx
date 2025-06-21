@@ -11,7 +11,7 @@ import {
 
 import type { Route } from './+types/root'
 import './app.css'
-import { Search } from './components/ui/Search'
+import { Search } from './components/Search'
 import React from 'react'
 
 export const links: Route.LinksFunction = () => [

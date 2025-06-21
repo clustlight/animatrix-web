@@ -12,7 +12,6 @@ import {
 } from 'react-icons/md'
 import type ReactPlayer from 'react-player'
 
-// Hook props for controlling the video player
 type UseVideoPlayerShortcutsProps = {
   playerRef: React.RefObject<ReactPlayer>
   duration: number
@@ -34,12 +33,8 @@ const PLAYBACK_RATE_MIN = 0.3
 const PLAYBACK_RATE_MAX = 2.0
 const SHORTCUT_ACTIVE_TIMEOUT = 100
 
-// Clamp value between min and max
-function clamp(val: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, val))
-}
+const clamp = (val: number, min: number, max: number) => Math.max(min, Math.min(max, val))
 
-// Provides keyboard shortcuts for the video player
 export function useVideoPlayerShortcuts({
   playerRef,
   duration,
@@ -54,7 +49,7 @@ export function useVideoPlayerShortcuts({
 }: UseVideoPlayerShortcutsProps) {
   useEffect(() => {
     if (disable) return
-    // Seek video by seconds
+
     const seek = (seconds: number, icon: React.ReactNode) => {
       const player = playerRef.current
       if (!player) return
@@ -62,7 +57,6 @@ export function useVideoPlayerShortcuts({
       onActionIcon?.(icon)
     }
 
-    // Change volume
     const adjustVolume = (delta: number) => {
       setVolume(v => {
         const newVolume = clamp(Math.round((v + delta) * 100) / 100, 0, 1)
@@ -74,7 +68,6 @@ export function useVideoPlayerShortcuts({
       })
     }
 
-    // Change playback rate
     const adjustPlaybackRate = (delta: number) => {
       setPlaybackRate(rate => {
         const newRate = clamp(
@@ -87,7 +80,6 @@ export function useVideoPlayerShortcuts({
       })
     }
 
-    // Jump to a percentage of the video
     const jumpToPercent = (percent: number) => {
       const player = playerRef.current
       if (!player || duration <= 0) return
@@ -106,9 +98,8 @@ export function useVideoPlayerShortcuts({
         const newVolume = isMuted ? prevVolume : 0
         if (onActionIcon) {
           const icon = newVolume === 0 ? <MdVolumeMute size={48} /> : <MdVolumeUp size={48} />
-          onActionIcon(icon, newVolume == 0 ? '' : `${Math.round(newVolume * 100)}%`)
+          onActionIcon(icon, newVolume === 0 ? '' : `${Math.round(newVolume * 100)}%`)
         }
-
         if (!isMuted && typeof window !== 'undefined') {
           localStorage.setItem('prevVolume', String(v))
         }
@@ -116,7 +107,6 @@ export function useVideoPlayerShortcuts({
       })
     }
 
-    // Keyboard shortcut definitions
     const keyActions: Array<{
       match: (e: KeyboardEvent) => boolean
       action: (e: KeyboardEvent) => void
@@ -145,18 +135,9 @@ export function useVideoPlayerShortcuts({
             return !p
           })
       },
-      {
-        match: e => e.key === 'f' || e.key === 'F',
-        action: () => toggleFullscreen()
-      },
-      {
-        match: e => e.code === 'ArrowUp',
-        action: () => adjustVolume(VOLUME_STEP)
-      },
-      {
-        match: e => e.code === 'ArrowDown',
-        action: () => adjustVolume(-VOLUME_STEP)
-      },
+      { match: e => e.key === 'f' || e.key === 'F', action: () => toggleFullscreen() },
+      { match: e => e.code === 'ArrowUp', action: () => adjustVolume(VOLUME_STEP) },
+      { match: e => e.code === 'ArrowDown', action: () => adjustVolume(-VOLUME_STEP) },
       {
         match: e => e.key.length === 1 && e.key >= '0' && e.key <= '9' && duration > 0,
         action: e => jumpToPercent(Number.parseInt(e.key, 10) / 10)
@@ -169,13 +150,9 @@ export function useVideoPlayerShortcuts({
         match: e => e.shiftKey && (e.key === '>' || e.key === '.'),
         action: () => adjustPlaybackRate(PLAYBACK_RATE_STEP)
       },
-      {
-        match: e => e.key === 'm' || e.key === 'M',
-        action: () => toggleMute()
-      }
+      { match: e => e.key === 'm' || e.key === 'M', action: () => toggleMute() }
     ]
 
-    // Keydown event handler
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.altKey || e.ctrlKey || e.metaKey) return
       for (const { match, action } of keyActions) {
@@ -189,7 +166,6 @@ export function useVideoPlayerShortcuts({
       }
     }
 
-    // Register keydown event
     window.addEventListener('keydown', handleKeyDown, { capture: true })
     return () => window.removeEventListener('keydown', handleKeyDown, { capture: true })
   }, [

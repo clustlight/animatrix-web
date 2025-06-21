@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import {
   MdForward10,
   MdForward30,
@@ -49,15 +49,22 @@ const PlaybackRateControl: React.FC<{
   onPlaybackRateChange: (rate: number) => void
 }> = ({ playbackRate, onPlaybackRateChange }) => {
   const [showBar, setShowBar] = useState(false)
-  let hoverTimeout: NodeJS.Timeout | null = null
+  const hoverTimeout = useRef<NodeJS.Timeout | null>(null)
 
   const handleMouseEnter = () => {
-    if (hoverTimeout) clearTimeout(hoverTimeout)
+    if (hoverTimeout.current) clearTimeout(hoverTimeout.current)
     setShowBar(true)
   }
   const handleMouseLeave = () => {
-    hoverTimeout = setTimeout(() => setShowBar(false), 80)
+    hoverTimeout.current = setTimeout(() => setShowBar(false), 80)
   }
+
+  useEffect(
+    () => () => {
+      if (hoverTimeout.current) clearTimeout(hoverTimeout.current)
+    },
+    []
+  )
 
   return (
     <div
@@ -131,19 +138,16 @@ const VolumeControl: React.FC<{
   onDrag?: (dragging: boolean) => void
 }> = ({ volume, onVolumeChange, onDrag }) => {
   const [showBar, setShowBar] = useState(false)
+  const prevVolumeRef = useRef(0.8)
 
-  // Get previous volume from localStorage or default
-  const getInitialPrevVolume = () => {
+  useEffect(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('prevVolume')
-      const v = stored !== null ? Number.parseFloat(stored) : 0.8
-      return v > 0 ? v : 0.8
+      prevVolumeRef.current = stored !== null ? Number.parseFloat(stored) : 0.8
     }
-    return 0.8
-  }
-  const prevVolumeRef = React.useRef(getInitialPrevVolume())
+  }, [])
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (volume > 0) {
       prevVolumeRef.current = volume
       if (typeof window !== 'undefined') {

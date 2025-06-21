@@ -1,21 +1,10 @@
-import dayjs from 'dayjs'
-import relativeTime from 'dayjs/plugin/relativeTime'
 import type { Episode, Season, Series } from '../types'
 import type { Route } from './+types/episode'
-import 'dayjs/locale/en'
-import advancedFormat from 'dayjs/plugin/advancedFormat'
-import timezone from 'dayjs/plugin/timezone'
-import utc from 'dayjs/plugin/utc'
 import React, { useState } from 'react'
 import { Link } from 'react-router'
 import VideoPlayer from '~/components/player/VideoPlayer'
 import { getApiBaseUrl } from '../lib/config'
-
-dayjs.extend(relativeTime)
-dayjs.locale('ja')
-dayjs.extend(utc)
-dayjs.extend(timezone)
-dayjs.extend(advancedFormat)
+import { EpisodeTimestamp, EpisodeList, SeasonTabs } from '~/components/Episode'
 
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url, {
@@ -106,92 +95,6 @@ function Breadcrumbs({ seriesData, seasonData }: { seriesData: Series; seasonDat
   )
 }
 
-function SeasonTabs({
-  seasonList,
-  selectedSeasonId,
-  setSelectedSeasonId
-}: {
-  seasonList: Season[]
-  selectedSeasonId: string
-  setSelectedSeasonId: (id: string) => void
-}) {
-  return (
-    <div className='flex gap-0 mb-1 flex-wrap'>
-      {seasonList.map(season => (
-        <button
-          key={season.season_id}
-          className={`px-2 py-2 rounded-t ${
-            selectedSeasonId === season.season_id
-              ? 'bg-blue-600 text-white font-bold'
-              : 'bg-gray-700 text-gray-200'
-          }`}
-          onClick={() => setSelectedSeasonId(season.season_id)}
-        >
-          {season.season_title}
-        </button>
-      ))}
-    </div>
-  )
-}
-
-function EpisodeList({
-  episodeList,
-  episodeData
-}: {
-  episodeList: Episode[]
-  episodeData: Episode
-}) {
-  return (
-    <div className='overflow-y-auto' style={{ maxHeight: '70vh' }}>
-      {episodeList.map(ep => (
-        <Link
-          to={`/episode/${ep.episode_id}`}
-          key={ep.episode_id}
-          className={`flex items-center gap-2 p-2 rounded hover:bg-blue-900 transition ${
-            ep.episode_id === episodeData.episode_id ? 'bg-blue-800' : ''
-          }`}
-        >
-          <img
-            src={ep.thumbnail_url || '/no-thumbnail.png'}
-            alt={ep.title}
-            // Make the thumbnail larger and keep 16:9 aspect ratio
-            className='w-36 h-20 object-cover rounded' // 144x80px (16:9)
-            style={{ aspectRatio: '16/9' }}
-          />
-          <div className='text-base font-semibold text-white truncate'>{ep.title}</div>
-        </Link>
-      ))}
-    </div>
-  )
-}
-
-// Additional: iPad Pro portrait detection hook
-function useIsIpadProPortrait() {
-  const [isPortrait, setIsPortrait] = React.useState(false)
-  React.useEffect(() => {
-    function check() {
-      // Portrait mode for iPad Pro 11/12.9 inch
-      const match = window.matchMedia(
-        '(min-width: 768px) and (max-width: 1024px) and (orientation: portrait)'
-      )
-      setIsPortrait(match.matches)
-    }
-    check()
-    window.addEventListener('resize', check)
-    return () => window.removeEventListener('resize', check)
-  }, [])
-  return isPortrait
-}
-
-// --- ① 日時表示用コンポーネントを作成 ---
-function EpisodeTimestamp({ timestamp }: { timestamp: string }) {
-  return (
-    <div className='text-xs sm:text-sm font-semibold text-white whitespace-nowrap'>
-      {`${dayjs(timestamp).format('YYYY/MM/DD HH:mm:ss (zzz)').replace('Japan Standard Time', 'JST')} (${dayjs(timestamp).fromNow()})`}
-    </div>
-  )
-}
-
 export default function Episode({
   loaderData
 }: {
@@ -222,174 +125,102 @@ export default function Episode({
   const episodeList: Episode[] = selectedSeason?.episodes || []
   const { progress, download, downloadUrl, error } = useEpisodeDownloader(episodeData)
 
-  const isIpadProPortrait = useIsIpadProPortrait()
-
   return (
     <main className='flex flex-col items-center pt-2 pb-4 min-h-screen bg-black'>
       {/* Breadcrumbs + broadcast date */}
       <Breadcrumbs seriesData={seriesData} seasonData={seasonData} />
 
-      {/* Layout switch */}
-      {isIpadProPortrait ? (
-        // Layout for iPad Pro portrait mode
-        <div className='w-full max-w-2xl px-2 flex flex-col gap-7 mt-4 flex-1'>
-          {/* Video and title */}
-          <div className='flex flex-col flex-1 min-w-0 space-y-2'>
-            <div className='flex items-center text-sm font-semibold mt-0.5'>
-              {seriesData.title} <span className='mx-1'>|</span> {seasonData.season_title}
-            </div>
-            <div className='flex items-center justify-between w-full'>
-              <div className='flex items-center xl:text-2xl font-bold mt-0.5 md:text-md'>
-                {episodeData.title}
-              </div>
-              <div className='ml-4'>
-                <EpisodeTimestamp timestamp={episodeData.timestamp} />
-              </div>
-            </div>
-            <div className='mt-3 ipadpro-portrait-player'>
-              {episodeData.video_url && <VideoPlayer url={episodeData.video_url} />}
-            </div>
-            {/* ...ダウンロードボタン等... */}
-            <div className='flex flex-col sm:flex-row items-start mt-4 gap-4'>
-              <button
-                onClick={download}
-                disabled={progress !== null}
-                className='ml-0 cursor-pointer transition-colors bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded shadow'
-                style={{ pointerEvents: progress !== null ? 'none' : 'auto' }}
-              >
-                Download Video
-              </button>
-              <div className='flex flex-col items-start gap-1 min-w-[180px] self-center'>
-                {progress !== null && (
-                  <div className='w-44 flex flex-col justify-center mt-2'>
-                    <div className='bg-gray-200 rounded-full h-2.5'>
-                      <div
-                        className='bg-blue-600 h-2.5 rounded-full transition-all'
-                        style={{ width: `${progress}%` }}
-                      />
-                    </div>
-                    <div className='text-center text-xs mt-0.5'>{progress}%</div>
-                  </div>
-                )}
-                {downloadUrl && (
-                  <a
-                    href={downloadUrl}
-                    download={`${episodeData.episode_id}__${seriesData.title}__${episodeData.title}.mp4`}
-                    className='px-3 py-1 rounded font-semibold bg-blue-600 text-white shadow hover:bg-blue-700 hover:text-white transition-colors cursor-pointer border border-blue-700'
-                    style={{ textDecoration: 'none' }}
-                  >
-                    Download Link (Click to save)
-                  </a>
-                )}
-                {error && <div className='text-red-500'>{error}</div>}
-              </div>
-            </div>
-          </div>
-          {/* Episode list */}
-          <div className='flex flex-col min-w-0 w-full mt-3'>
-            <SeasonTabs
-              seasonList={seasonList}
-              selectedSeasonId={selectedSeasonId}
-              setSelectedSeasonId={setSelectedSeasonId}
-            />
-            <EpisodeList episodeList={episodeList} episodeData={episodeData} />
-          </div>
-        </div>
-      ) : (
-        // Desktop / landscape layout (default)
+      {/* レイアウトは常に1パターンのみ */}
+      <div
+        className='
+          flex flex-col lg:flex-row w-full max-w-10/12 px-2 gap-7 mt-4 flex-1
+          tablet-portrait:flex-col tablet-portrait:max-w-2xl
+          tablet-portrait:gap-3 tablet-portrait:mt-2
+        '
+      >
+        {/* Video and title */}
         <div
           className='
-            flex flex-col lg:flex-row w-full max-w-10/12 px-2 gap-7 mt-4 flex-1
-            tablet-portrait:flex-col tablet-portrait:max-w-2xl
-            tablet-portrait:gap-3 tablet-portrait:mt-2
+            flex flex-col min-w-0 space-y-2
+            tablet-portrait:w-full
+            flex-1 tablet-portrait:flex-none
           '
         >
-          {/* Video and title */}
-          <div
-            className='
-              flex flex-col min-w-0 space-y-2
-              tablet-portrait:w-full
-              flex-1 tablet-portrait:flex-none
-            '
-          >
-            <div className='flex items-center text-sm font-semibold mt-0.5'>
-              {seriesData.title} <span className='mx-1'>|</span> {seasonData.season_title}
-            </div>
-            {/* タイトルと日時を同じ高さで右端に配置（幅が狭い場合は下に表示） */}
-            <div className='flex flex-col w-full'>
-              <div className='flex items-center justify-between w-full'>
-                <div className='flex items-center text-2xl font-bold mt-0.5'>
-                  {episodeData.title}
-                </div>
-                {/* md以上で右端、md未満で非表示 */}
-                <div className='ml-4 hidden md:block'>
-                  <EpisodeTimestamp timestamp={episodeData.timestamp} />
-                </div>
-              </div>
-              {/* md未満でタイトル下に表示 */}
-              <div className='block md:hidden mt-1'>
+          <div className='flex items-center text-sm font-semibold mt-0.5'>
+            {seriesData.title} <span className='mx-1'>|</span> {seasonData.season_title}
+          </div>
+          {/* タイトルと日時を同じ高さで右端に配置（幅が狭い場合は下に表示） */}
+          <div className='flex flex-col w-full'>
+            <div className='flex items-center justify-between w-full'>
+              <div className='flex items-center text-2xl font-bold mt-0.5'>{episodeData.title}</div>
+              {/* md以上で右端、md未満で非表示 */}
+              <div className='ml-4 hidden md:block'>
                 <EpisodeTimestamp timestamp={episodeData.timestamp} />
               </div>
             </div>
-            <div className='tablet-portrait:mt-1'>
-              {episodeData.video_url && (
-                <div className='tablet-portrait:w-full'>
-                  <VideoPlayer url={episodeData.video_url} />
+            {/* md未満でタイトル下に表示 */}
+            <div className='block md:hidden mt-1'>
+              <EpisodeTimestamp timestamp={episodeData.timestamp} />
+            </div>
+          </div>
+          <div className='tablet-portrait:mt-1'>
+            {episodeData.video_url && (
+              <div className='tablet-portrait:w-full'>
+                <VideoPlayer url={episodeData.video_url} />
+              </div>
+            )}
+          </div>
+          <div className='flex flex-col sm:flex-row items-start mt-4 gap-4'>
+            <button
+              onClick={download}
+              disabled={progress !== null}
+              className='ml-0 cursor-pointer transition-colors bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded shadow'
+              style={{ pointerEvents: progress !== null ? 'none' : 'auto' }}
+            >
+              Download Video
+            </button>
+            <div className='flex flex-col items-start gap-1 min-w-[180px] self-center'>
+              {progress !== null && (
+                <div className='w-44 flex flex-col justify-center mt-2'>
+                  <div className='bg-gray-200 rounded-full h-2.5'>
+                    <div
+                      className='bg-blue-600 h-2.5 rounded-full transition-all'
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                  <div className='text-center text-xs mt-0.5'>{progress}%</div>
                 </div>
               )}
+              {downloadUrl && (
+                <a
+                  href={downloadUrl}
+                  download={`${episodeData.episode_id}__${seriesData.title}__${episodeData.title}.mp4`}
+                  className='px-3 py-1 rounded font-semibold bg-blue-600 text-white shadow hover:bg-blue-700 hover:text-white transition-colors cursor-pointer border border-blue-700'
+                  style={{ textDecoration: 'none' }}
+                >
+                  Download Link (Click to save)
+                </a>
+              )}
+              {error && <div className='text-red-500'>{error}</div>}
             </div>
-            <div className='flex flex-col sm:flex-row items-start mt-4 gap-4'>
-              <button
-                onClick={download}
-                disabled={progress !== null}
-                className='ml-0 cursor-pointer transition-colors bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded shadow'
-                style={{ pointerEvents: progress !== null ? 'none' : 'auto' }}
-              >
-                Download Video
-              </button>
-              <div className='flex flex-col items-start gap-1 min-w-[180px] self-center'>
-                {progress !== null && (
-                  <div className='w-44 flex flex-col justify-center mt-2'>
-                    <div className='bg-gray-200 rounded-full h-2.5'>
-                      <div
-                        className='bg-blue-600 h-2.5 rounded-full transition-all'
-                        style={{ width: `${progress}%` }}
-                      />
-                    </div>
-                    <div className='text-center text-xs mt-0.5'>{progress}%</div>
-                  </div>
-                )}
-                {downloadUrl && (
-                  <a
-                    href={downloadUrl}
-                    download={`${episodeData.episode_id}__${seriesData.title}__${episodeData.title}.mp4`}
-                    className='px-3 py-1 rounded font-semibold bg-blue-600 text-white shadow hover:bg-blue-700 hover:text-white transition-colors cursor-pointer border border-blue-700'
-                    style={{ textDecoration: 'none' }}
-                  >
-                    Download Link (Click to save)
-                  </a>
-                )}
-                {error && <div className='text-red-500'>{error}</div>}
-              </div>
-            </div>
-          </div>
-
-          {/* Right: season tabs + episode list */}
-          <div
-            className='
-              flex flex-col min-w-0 max-w-md w-full mt-3
-              tablet-portrait:max-w-full tablet-portrait:w-full tablet-portrait:mt-2
-            '
-          >
-            <SeasonTabs
-              seasonList={seasonList}
-              selectedSeasonId={selectedSeasonId}
-              setSelectedSeasonId={setSelectedSeasonId}
-            />
-            <EpisodeList episodeList={episodeList} episodeData={episodeData} />
           </div>
         </div>
-      )}
+
+        {/* Right: season tabs + episode list */}
+        <div
+          className='
+            flex flex-col min-w-0 max-w-md w-full mt-3
+            tablet-portrait:max-w-full tablet-portrait:w-full tablet-portrait:mt-2
+          '
+        >
+          <SeasonTabs
+            seasonList={seasonList}
+            selectedSeasonId={selectedSeasonId}
+            setSelectedSeasonId={setSelectedSeasonId}
+          />
+          <EpisodeList episodeList={episodeList} episodeData={episodeData} />
+        </div>
+      </div>
     </main>
   )
 }
