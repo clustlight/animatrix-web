@@ -169,7 +169,7 @@ export default function VideoPlayer({ url }: { url: string }) {
         playing={playing}
         volume={volume}
         controls={false}
-        playsinline
+        playsinline={!isFullscreen}
         width='100%'
         height='100%'
         playbackRate={playbackRate}
