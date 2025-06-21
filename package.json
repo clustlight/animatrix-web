@@ -9,7 +9,10 @@
     "typecheck": "react-router typegen && tsc",
     "eslint": "eslint . --fix",
     "prettier:check": "prettier --check \"./**/*.{ts,tsx}\"",
-    "prettier:fix": "prettier --write \"./**/*.{ts,tsx}\""
+    "prettier:fix": "prettier --write \"./**/*.{ts,tsx}\"",
+    "lint": "npm run prettier:check && eslint",
+    "format": "npm run prettier:fix && npm run eslint"
+
   },
   "dependencies": {
     "@react-router/node": "^7.5.3",

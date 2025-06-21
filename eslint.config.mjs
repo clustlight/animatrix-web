@@ -35,6 +35,8 @@ export default defineConfig([{
         "@typescript-eslint/consistent-type-imports": "warn",
     },
     ignores: [
-        ".react-router/**"
+        ".react-router/**",
+        "eslint.config.mjs",
+        "prettier.config.js",
     ]
 }]);
