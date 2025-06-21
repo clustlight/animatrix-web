@@ -66,7 +66,8 @@ export function useVideoPlayerShortcuts({
       setVolume(v => {
         const newVolume = clamp(Math.round((v + delta) * 100) / 100, 0, 1)
         if (onActionIcon) {
-          onActionIcon(delta > 0 ? <MdVolumeUp size={48} /> : <MdVolumeDown size={48} />)
+          const icon = delta > 0 ? <MdVolumeUp size={48} /> : <MdVolumeDown size={48} />
+          onActionIcon(icon, `${Math.round(newVolume * 100)}%`)
         }
         return newVolume
       })

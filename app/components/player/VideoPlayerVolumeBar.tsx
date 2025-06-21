@@ -20,7 +20,7 @@ export default function VideoPlayerVolumeBar({
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault()
       e.stopPropagation()
-      const delta = e.deltaY < 0 ? 0.05 : -0.05
+      const delta = e.deltaY < 0 ? 0.1 : -0.1
       let newVolume = volume + delta
       newVolume = Math.max(0, Math.min(1, newVolume))
       if (newVolume !== volume) {
