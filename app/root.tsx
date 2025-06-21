@@ -90,7 +90,7 @@ export default function App() {
           value={searchParams}
           onChange={e => setSearchParams(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder='Search by series or episode name'
+          placeholder='Search by series or season name'
         />
       </div>
       {/* Main content */}
