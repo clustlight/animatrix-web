@@ -87,15 +87,7 @@ function useEpisodeDownloader(episodeData: Episode) {
   return { progress, download, downloadUrl, error }
 }
 
-function Breadcrumbs({
-  seriesData,
-  seasonData,
-  episodeData
-}: {
-  seriesData: Series
-  seasonData: Season
-  episodeData: Episode
-}) {
+function Breadcrumbs({ seriesData, seasonData }: { seriesData: Series; seasonData: Season }) {
   return (
     <div className='flex flex-col sm:flex-row items-start sm:items-center justify-between mt-2 w-full max-w-10/12 px-3 gap-2'>
       <nav className='flex items-center text-sm text-gray-400 gap-2'>
@@ -110,9 +102,6 @@ function Breadcrumbs({
           {seasonData.season_title}
         </Link>
       </nav>
-      <div className='text-xs sm:text-sm font-semibold text-white whitespace-nowrap'>
-        {`${dayjs(episodeData.timestamp).format('YYYY/MM/DD HH:mm:ss (zzz)').replace('Japan Standard Time', 'JST')} (${dayjs(episodeData.timestamp).fromNow()})`}
-      </div>
     </div>
   )
 }
@@ -194,6 +183,15 @@ function useIsIpadProPortrait() {
   return isPortrait
 }
 
+// --- ① 日時表示用コンポーネントを作成 ---
+function EpisodeTimestamp({ timestamp }: { timestamp: string }) {
+  return (
+    <div className='text-xs sm:text-sm font-semibold text-white whitespace-nowrap'>
+      {`${dayjs(timestamp).format('YYYY/MM/DD HH:mm:ss (zzz)').replace('Japan Standard Time', 'JST')} (${dayjs(timestamp).fromNow()})`}
+    </div>
+  )
+}
+
 export default function Episode({
   loaderData
 }: {
@@ -229,7 +227,7 @@ export default function Episode({
   return (
     <main className='flex flex-col items-center pt-2 pb-4 min-h-screen bg-black'>
       {/* Breadcrumbs + broadcast date */}
-      <Breadcrumbs seriesData={seriesData} seasonData={seasonData} episodeData={episodeData} />
+      <Breadcrumbs seriesData={seriesData} seasonData={seasonData} />
 
       {/* Layout switch */}
       {isIpadProPortrait ? (
@@ -240,7 +238,14 @@ export default function Episode({
             <div className='flex items-center text-sm font-semibold mt-0.5'>
               {seriesData.title} <span className='mx-1'>|</span> {seasonData.season_title}
             </div>
-            <div className='flex items-center text-2xl font-bold mt-0.5'>{episodeData.title}</div>
+            <div className='flex items-center justify-between w-full'>
+              <div className='flex items-center xl:text-2xl font-bold mt-0.5 md:text-md'>
+                {episodeData.title}
+              </div>
+              <div className='ml-4'>
+                <EpisodeTimestamp timestamp={episodeData.timestamp} />
+              </div>
+            </div>
             <div className='mt-3 ipadpro-portrait-player'>
               {episodeData.video_url && <VideoPlayer url={episodeData.video_url} />}
             </div>
@@ -310,8 +315,23 @@ export default function Episode({
             <div className='flex items-center text-sm font-semibold mt-0.5'>
               {seriesData.title} <span className='mx-1'>|</span> {seasonData.season_title}
             </div>
-            <div className='flex items-center text-2xl font-bold mt-0.5'>{episodeData.title}</div>
-            <div className='mt-3 tablet-portrait:mt-1'>
+            {/* タイトルと日時を同じ高さで右端に配置（幅が狭い場合は下に表示） */}
+            <div className='flex flex-col w-full'>
+              <div className='flex items-center justify-between w-full'>
+                <div className='flex items-center text-2xl font-bold mt-0.5'>
+                  {episodeData.title}
+                </div>
+                {/* md以上で右端、md未満で非表示 */}
+                <div className='ml-4 hidden md:block'>
+                  <EpisodeTimestamp timestamp={episodeData.timestamp} />
+                </div>
+              </div>
+              {/* md未満でタイトル下に表示 */}
+              <div className='block md:hidden mt-1'>
+                <EpisodeTimestamp timestamp={episodeData.timestamp} />
+              </div>
+            </div>
+            <div className='tablet-portrait:mt-1'>
               {episodeData.video_url && (
                 <div className='tablet-portrait:w-full'>
                   <VideoPlayer url={episodeData.video_url} />

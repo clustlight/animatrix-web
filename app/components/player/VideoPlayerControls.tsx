@@ -236,9 +236,16 @@ export default function VideoPlayerControls({
     showUI && !fadeOut ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
   ].join(' ')
 
+  // モバイル・タブレット判定
+  const isMobileOrTablet =
+    typeof window !== 'undefined' ? window.matchMedia('(max-width: 1024px)').matches : false
+  const isMobile =
+    typeof window !== 'undefined' ? window.matchMedia('(max-width: 600px)').matches : false
+  const isTablet = isMobileOrTablet && !isMobile
+
   return (
     <div>
-      {/* Seek bar */}
+      {/* Seek bar（全デバイスで表示） */}
       <div
         data-player-controls
         onClick={e => e.stopPropagation()}
@@ -264,39 +271,72 @@ export default function VideoPlayerControls({
         }}
       >
         <div className='flex items-center justify-center w-full'>
-          {/* Left: time and volume */}
+          {/* Left: 現在時間/総時間（全デバイスで表示） */}
           <div className='flex items-center gap-1 absolute left-0 pl-4'>
-            <span>
+            <span
+              className={
+                isMobile
+                  ? 'text-xs text-white opacity-80 select-none'
+                  : 'text-base text-white select-none'
+              }
+            >
               {formatTime(currentTime)} / {formatTime(duration)}
             </span>
-            <VolumeControl
-              volume={volume}
-              onVolumeChange={onVolumeChange}
-              onDrag={onVolumeBarDrag}
-            />
+            {/* PCのみボリューム表示 */}
+            {!isMobileOrTablet && (
+              <VolumeControl
+                volume={volume}
+                onVolumeChange={onVolumeChange}
+                onDrag={onVolumeBarDrag}
+              />
+            )}
           </div>
-          {/* Center: seek and play/pause */}
+          {/* Center: 再生/一時停止・スキップ */}
           <div className='flex items-center gap-2 justify-center'>
-            <IconButton label='Back 30s' onClick={() => onSeek(currentTime - 30)}>
-              <MdReplay30 size={28} />
-            </IconButton>
-            <IconButton label='Back 10s' onClick={() => onSeek(currentTime - 10)}>
-              <MdReplay10 size={28} />
-            </IconButton>
-            <PlayPauseButton playing={playing} onClick={onPlayPause} />
-            <IconButton label='Forward 10s' onClick={() => onSeek(currentTime + 10)}>
-              <MdForward10 size={28} />
-            </IconButton>
-            <IconButton label='Forward 30s' onClick={() => onSeek(currentTime + 30)}>
-              <MdForward30 size={28} />
-            </IconButton>
+            {isMobile ? (
+              <PlayPauseButton playing={playing} onClick={onPlayPause} />
+            ) : isTablet ? (
+              <>
+                <IconButton label='Back 30s' onClick={() => onSeek(currentTime - 30)}>
+                  <MdReplay30 size={28} />
+                </IconButton>
+                <IconButton label='Back 10s' onClick={() => onSeek(currentTime - 10)}>
+                  <MdReplay10 size={28} />
+                </IconButton>
+                <PlayPauseButton playing={playing} onClick={onPlayPause} />
+                <IconButton label='Forward 10s' onClick={() => onSeek(currentTime + 10)}>
+                  <MdForward10 size={28} />
+                </IconButton>
+                <IconButton label='Forward 30s' onClick={() => onSeek(currentTime + 30)}>
+                  <MdForward30 size={28} />
+                </IconButton>
+              </>
+            ) : (
+              <>
+                <IconButton label='Back 30s' onClick={() => onSeek(currentTime - 30)}>
+                  <MdReplay30 size={28} />
+                </IconButton>
+                <IconButton label='Back 10s' onClick={() => onSeek(currentTime - 10)}>
+                  <MdReplay10 size={28} />
+                </IconButton>
+                <PlayPauseButton playing={playing} onClick={onPlayPause} />
+                <IconButton label='Forward 10s' onClick={() => onSeek(currentTime + 10)}>
+                  <MdForward10 size={28} />
+                </IconButton>
+                <IconButton label='Forward 30s' onClick={() => onSeek(currentTime + 30)}>
+                  <MdForward30 size={28} />
+                </IconButton>
+              </>
+            )}
           </div>
-          {/* Right: playback rate and fullscreen */}
+          {/* Right: 全画面（全デバイス）, 再生速度（PCのみ） */}
           <div className='flex items-center gap-2 absolute right-0 pr-4'>
-            <PlaybackRateControl
-              playbackRate={playbackRate}
-              onPlaybackRateChange={onPlaybackRateChange}
-            />
+            {!isMobileOrTablet && (
+              <PlaybackRateControl
+                playbackRate={playbackRate}
+                onPlaybackRateChange={onPlaybackRateChange}
+              />
+            )}
             <IconButton
               label={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
               onClick={onFullscreen}

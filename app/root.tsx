@@ -70,27 +70,39 @@ export default function App() {
       {/* Logo */}
       <Link
         to='/'
-        className='fixed top-3 left-8 z-50 flex items-center text-xl font-bold text-white hover:text-blue-400 transition-colors cursor-pointer select-none'
+        className='fixed top-3 left-2 md:left-8 z-50 flex items-center font-bold text-white hover:text-blue-400 transition-colors cursor-pointer select-none
+          text-lg md:text-xl'
         style={{
           textShadow: '0 2px 8px #0008',
           padding: '0.25rem 0.75rem',
           borderRadius: '0.5rem',
-          height: '48px'
+          height: '42px'
         }}
         aria-label='Go to home'
       >
         animatrix
       </Link>
-      {/* Search bar: fixed at the top center of the screen */}
+      {/* Search bar: fixed at the top (右寄せ&幅1/3) */}
       <div
-        className='fixed top-3 left-1/2 -translate-x-1/2 z-40 w-full max-w-xl px-2 flex items-center'
-        style={{ height: '48px' }}
+        className={`
+          fixed top-3
+          right-5
+          left-auto
+          z-40
+          flex items-center
+          w-1/3
+          min-w-[160px]
+          max-w-xs
+        `}
+        style={{
+          height: '42px'
+        }}
       >
         <Search
           value={searchParams}
           onChange={e => setSearchParams(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder='Search by series or season name'
+          placeholder='Search'
         />
       </div>
       {/* Main content */}
