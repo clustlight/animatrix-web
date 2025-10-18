@@ -12,12 +12,22 @@ import { useInputFocus } from './useInputFocus'
 import { ActionOverlay } from './VIdeoPlayerActionOverlay'
 
 // Video player component
-export default function VideoPlayer({ url }: { url: string }) {
+export default function VideoPlayer({
+  url,
+  onEnded,
+  autoPlay = false,
+  onReady // 追加
+}: {
+  url: string
+  onEnded?: () => void
+  autoPlay?: boolean
+  onReady?: () => void // 追加
+}) {
   const playerRef = useRef<ReactPlayer>(null as unknown as ReactPlayer)
   const containerRef = useRef<HTMLDivElement>(null)
 
   // State
-  const [playing, setPlaying] = useState(false)
+  const [playing, setPlaying] = useState(autoPlay)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [volume, setVolume] = usePersistedVolume()
@@ -131,7 +141,10 @@ export default function VideoPlayer({ url }: { url: string }) {
   }, [fadeOut, showUI, isFullscreen])
 
   // UI visibility condition
-  const isUIVisible = isFullscreen ? hovered && !fadeOut : hovered || !playing
+  const isUIVisible = useCallback(
+    () => (isFullscreen ? hovered && !fadeOut : hovered || !playing),
+    [isFullscreen, hovered, fadeOut, playing]
+  )
 
   // 動画のアスペクト比を取得
   const handleReady = useCallback(() => {
@@ -140,7 +153,9 @@ export default function VideoPlayer({ url }: { url: string }) {
     if (video && video.videoWidth && video.videoHeight) {
       setAspectRatio(video.videoWidth / video.videoHeight)
     }
-  }, [])
+    // 追加: 親から渡されたonReadyを呼ぶ
+    if (onReady) onReady()
+  }, [onReady])
 
   // --- Render ---
   return (
@@ -187,13 +202,14 @@ export default function VideoPlayer({ url }: { url: string }) {
         onDuration={setDuration}
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
-        onReady={handleReady}
+        onReady={handleReady} // ここでhandleReadyを使う
+        onEnded={onEnded}
         style={{ position: 'absolute', inset: 0 }}
       />
       {/* Action overlay */}
       {(actionIcon || actionText) && <ActionOverlay icon={actionIcon} text={actionText} />}
       {/* Controls */}
-      {showUI && isUIVisible && (
+      {showUI && isUIVisible() && (
         <VideoPlayerControls
           playing={playing}
           onPlayPause={handlePlayPause}
