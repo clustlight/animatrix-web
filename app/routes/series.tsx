@@ -149,7 +149,7 @@ function EpisodeList({ episodes }: EpisodeListProps) {
                 onError={() => handleImgError(ep.episode_id)}
               />
             )}
-            <span className='absolute bottom-1 right-1 bg-black bg-opacity-70 text-xs text-white px-2 py-0.5 rounded'>
+            <span className='absolute bottom-1 right-1 bg-gray-700 bg text-xs text-white px-2 py-0.5 rounded'>
               {ep.duration_string}
             </span>
           </div>
