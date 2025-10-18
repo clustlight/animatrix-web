@@ -205,6 +205,12 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
     [episodeList, seasonList, episodeData, selectedSeasonId]
   )
 
+  // 追加: クライアントマウント済みか判定
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   return (
     <main className='flex flex-col items-center pt-2 pb-4 min-h-screen bg-black'>
       <Breadcrumbs seriesData={seriesData} seasonData={seasonData} />
@@ -223,7 +229,7 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
               </div>
             </div>
           </div>
-          {episodeData.video_url && (
+          {episodeData.video_url && mounted && (
             <div className='tablet-portrait:w-full'>
               <VideoPlayer
                 key={episodeData.episode_id}
