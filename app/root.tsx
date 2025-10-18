@@ -67,21 +67,39 @@ export default function App() {
           backdropFilter: 'blur(6px)'
         }}
       />
-      {/* Logo */}
-      <Link
-        to='/'
-        className='fixed top-3 left-2 md:left-8 z-50 flex items-center font-bold text-white hover:text-blue-400 transition-colors cursor-pointer select-none
-          text-lg md:text-xl'
-        style={{
-          textShadow: '0 2px 8px #0008',
-          padding: '0.25rem 0.75rem',
-          borderRadius: '0.5rem',
-          height: '42px'
-        }}
-        aria-label='Go to home'
-      >
-        animatrix
-      </Link>
+      {/* Logo & Series link */}
+      <div className='fixed top-3 left-2 md:left-8 z-50 flex items-center gap-4 h-[42px]'>
+        <Link
+          to='/'
+          className='font-bold text-white hover:text-blue-400 transition-colors cursor-pointer select-none text-lg md:text-xl flex items-center'
+          style={{
+            textShadow: '0 2px 8px #0008',
+            padding: '0.25rem 0.75rem',
+            borderRadius: '0.5rem',
+            height: '42px',
+            display: 'flex',
+            alignItems: 'center'
+          }}
+          aria-label='Go to home'
+        >
+          animatrix
+        </Link>
+        <Link
+          to='/series'
+          className='font-semibold text-blue-300 hover:text-blue-400 transition-colors px-3 py-1 rounded flex items-center'
+          style={{
+            textShadow: '0 2px 8px #0008',
+            padding: '0.25rem 0.75rem',
+            borderRadius: '0.5rem',
+            height: '42px',
+            display: 'flex',
+            alignItems: 'center'
+          }}
+          aria-label='Go to series list'
+        >
+          Series
+        </Link>
+      </div>
       {/* Search bar: fixed at the top (右寄せ&幅1/3) */}
       <div
         className={`
