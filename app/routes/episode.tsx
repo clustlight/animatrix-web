@@ -1,11 +1,10 @@
 import type { Episode, Season, Series } from '../types'
 import type { Route } from './+types/episode'
-import { useState, useCallback, useEffect, useMemo, Suspense, lazy } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { useState, useCallback, useEffect } from 'react'
+import { Link } from 'react-router'
+import VideoPlayer from '~/components/player/VideoPlayer'
 import { getApiBaseUrl } from '../lib/config'
 import { EpisodeTimestamp, EpisodeList, SeasonTabs } from '~/components/Episode'
-
-const VideoPlayer = lazy(() => import('~/components/player/VideoPlayer'))
 
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url, { headers: { 'Content-Type': 'application/json' } })
@@ -35,7 +34,7 @@ type DownloaderResult = {
   error: string | null
 }
 
-function useEpisodeDownloader(videoUrl: string): DownloaderResult {
+function useEpisodeDownloader(episodeData: Episode): DownloaderResult {
   const [progress, setProgress] = useState<number | null>(null)
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -45,7 +44,7 @@ function useEpisodeDownloader(videoUrl: string): DownloaderResult {
     setError(null)
     setDownloadUrl(null)
     try {
-      const res = await fetch(videoUrl, { credentials: 'include' })
+      const res = await fetch(episodeData.video_url, { credentials: 'include' })
       if (!res.body) throw new Error('Streaming is not supported')
       const contentLength = Number(res.headers.get('Content-Length'))
       const reader = res.body.getReader()
@@ -68,7 +67,7 @@ function useEpisodeDownloader(videoUrl: string): DownloaderResult {
     } finally {
       setProgress(null)
     }
-  }, [videoUrl])
+  }, [episodeData.video_url])
 
   useEffect(() => {
     return () => {
@@ -98,80 +97,6 @@ function Breadcrumbs({ seriesData, seasonData }: { seriesData: Series; seasonDat
   )
 }
 
-function DownloadSection({
-  episodeData,
-  seriesData,
-  progress,
-  download,
-  downloadUrl,
-  error
-}: {
-  episodeData: Episode
-  seriesData: Series
-  progress: number | null
-  download: () => Promise<void>
-  downloadUrl: string | null
-  error: string | null
-}) {
-  return (
-    <div className='flex flex-col sm:flex-row items-start mt-2 gap-4'>
-      <button
-        onClick={download}
-        disabled={progress !== null}
-        className='ml-0 cursor-pointer transition-colors bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded shadow'
-        style={{ pointerEvents: progress !== null ? 'none' : 'auto' }}
-      >
-        Download Video
-      </button>
-      <div className='flex flex-col items-start gap-1 min-w-[180px] self-center'>
-        {progress !== null && (
-          <div className='w-44 flex flex-col justify-center mt-2'>
-            <div className='bg-gray-200 rounded-full h-2.5'>
-              <div
-                className='bg-blue-600 h-2.5 rounded-full transition-all'
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-            <div className='text-center text-xs mt-0.5'>{progress}%</div>
-          </div>
-        )}
-        {downloadUrl && (
-          <a
-            href={downloadUrl}
-            download={`${episodeData.episode_id}__${seriesData.title}__${episodeData.title}.mp4`}
-            className='px-3 py-1 rounded font-semibold bg-blue-600 text-white shadow hover:bg-blue-700 hover:text-white transition-colors cursor-pointer border border-blue-700'
-            style={{ textDecoration: 'none' }}
-          >
-            Download Link (Click to save)
-          </a>
-        )}
-        {error && <div className='text-red-500'>{error}</div>}
-      </div>
-    </div>
-  )
-}
-
-function getNextEpisode(
-  episodeList: Episode[],
-  seasonList: Season[],
-  episodeData: Episode,
-  selectedSeasonId: string
-): Episode | null {
-  if (!episodeList || episodeList.length === 0) return null
-  const idx = episodeList.findIndex(ep => ep.episode_id === episodeData.episode_id)
-  if (idx >= 0 && idx < episodeList.length - 1) {
-    return episodeList[idx + 1]
-  }
-  const currentSeasonIdx = seasonList.findIndex(s => s.season_id === selectedSeasonId)
-  if (currentSeasonIdx >= 0 && currentSeasonIdx < seasonList.length - 1) {
-    const nextSeason = seasonList[currentSeasonIdx + 1]
-    if (nextSeason.episodes && nextSeason.episodes.length > 0) {
-      return nextSeason.episodes[0]
-    }
-  }
-  return null
-}
-
 type LoaderData =
   | { seasonData: Season; episodeData: Episode; seriesData: Series }
   | { error: string }
@@ -187,28 +112,15 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
   }
 
   const { seriesData, seasonData, episodeData } = loaderData
-  const navigate = useNavigate()
   useEffect(() => {
     document.title = `${episodeData.title} | animatrix`
   }, [episodeData.title])
 
   const seasonList = seriesData.seasons || []
   const [selectedSeasonId, setSelectedSeasonId] = useState<string>(seasonData.season_id)
-  const selectedSeason = useMemo(
-    () => seasonList.find(s => s.season_id === selectedSeasonId),
-    [seasonList, selectedSeasonId]
-  )
+  const selectedSeason = seasonList.find(s => s.season_id === selectedSeasonId)
   const episodeList = selectedSeason?.episodes || []
-  const { progress, download, downloadUrl, error } = useEpisodeDownloader(episodeData.video_url)
-
-  const nextEpisode = useMemo(
-    () => getNextEpisode(episodeList, seasonList, episodeData, selectedSeasonId),
-    [episodeList, seasonList, episodeData, selectedSeasonId]
-  )
-
-  // クライアントマウント済みフラグ
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => { setMounted(true) }, [])
+  const { progress, download, downloadUrl, error } = useEpisodeDownloader(episodeData)
 
   return (
     <main className='flex flex-col items-center pt-2 pb-4 min-h-screen bg-black'>
@@ -228,42 +140,45 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
               </div>
             </div>
           </div>
-          {episodeData.video_url && mounted && (
-            <Suspense fallback={null}>
-              <VideoPlayer
-                key={episodeData.episode_id}
-                videoKey={episodeData.episode_id}
-                url={episodeData.video_url}
-                autoPlay={true}
-                onEnded={() => {
-                  if (nextEpisode) {
-                    const idx = episodeList.findIndex(
-                      ep => ep.episode_id === episodeData.episode_id
-                    )
-                    if (idx >= 0 && idx < episodeList.length - 1) {
-                      navigate(`/episode/${nextEpisode.episode_id}`)
-                    } else {
-                      const currentSeasonIdx = seasonList.findIndex(
-                        s => s.season_id === selectedSeasonId
-                      )
-                      if (currentSeasonIdx >= 0 && currentSeasonIdx < seasonList.length - 1) {
-                        setSelectedSeasonId(seasonList[currentSeasonIdx + 1].season_id)
-                      }
-                      navigate(`/episode/${nextEpisode.episode_id}`)
-                    }
-                  }
-                }}
-              />
-            </Suspense>
+          {episodeData.video_url && (
+            <div className='tablet-portrait:w-full'>
+              <VideoPlayer url={episodeData.video_url} />
+            </div>
           )}
-          <DownloadSection
-            episodeData={episodeData}
-            seriesData={seriesData}
-            progress={progress}
-            download={download}
-            downloadUrl={downloadUrl}
-            error={error}
-          />
+          <div className='flex flex-col sm:flex-row items-start mt-2 gap-4'>
+            <button
+              onClick={download}
+              disabled={progress !== null}
+              className='ml-0 cursor-pointer transition-colors bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded shadow'
+              style={{ pointerEvents: progress !== null ? 'none' : 'auto' }}
+            >
+              Download Video
+            </button>
+            <div className='flex flex-col items-start gap-1 min-w-[180px] self-center'>
+              {progress !== null && (
+                <div className='w-44 flex flex-col justify-center mt-2'>
+                  <div className='bg-gray-200 rounded-full h-2.5'>
+                    <div
+                      className='bg-blue-600 h-2.5 rounded-full transition-all'
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                  <div className='text-center text-xs mt-0.5'>{progress}%</div>
+                </div>
+              )}
+              {downloadUrl && (
+                <a
+                  href={downloadUrl}
+                  download={`${episodeData.episode_id}__${seriesData.title}__${episodeData.title}.mp4`}
+                  className='px-3 py-1 rounded font-semibold bg-blue-600 text-white shadow hover:bg-blue-700 hover:text-white transition-colors cursor-pointer border border-blue-700'
+                  style={{ textDecoration: 'none' }}
+                >
+                  Download Link (Click to save)
+                </a>
+              )}
+              {error && <div className='text-red-500'>{error}</div>}
+            </div>
+          </div>
         </div>
         <div className='flex flex-col min-w-0 max-w-md md:w-2/3 w-full'>
           <SeasonTabs

@@ -12,24 +12,12 @@ import { useInputFocus } from './useInputFocus'
 import { ActionOverlay } from './VIdeoPlayerActionOverlay'
 
 // Video player component
-export default function VideoPlayer({
-  url,
-  videoKey,
-  onEnded,
-  autoPlay = false,
-  onReady
-}: {
-  url: string
-  videoKey: string
-  onEnded?: () => void
-  autoPlay?: boolean
-  onReady?: () => void
-}) {
+export default function VideoPlayer({ url }: { url: string }) {
   const playerRef = useRef<ReactPlayer>(null as unknown as ReactPlayer)
   const containerRef = useRef<HTMLDivElement>(null)
 
   // State
-  const [playing, setPlaying] = useState(autoPlay)
+  const [playing, setPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [volume, setVolume] = usePersistedVolume()
@@ -152,37 +140,9 @@ export default function VideoPlayer({
     if (video && video.videoWidth && video.videoHeight) {
       setAspectRatio(video.videoWidth / video.videoHeight)
     }
-    // 追加: 親から渡されたonReadyを呼ぶ
-    if (onReady) onReady()
-  }, [onReady])
-
-  useEffect(() => {
-    setPlaying(autoPlay)
-    setIsReady(false)
-    setCurrentTime(0)
-    setDuration(0)
-  }, [url, videoKey, autoPlay])
-
-  useEffect(() => {
-    return () => {
-      // ReactPlayerの内部videoを停止
-      if (playerRef.current) {
-        try {
-          const internal = playerRef.current.getInternalPlayer?.()
-          if (internal && typeof internal.pause === 'function') {
-            internal.pause()
-          }
-          // さらにsrcを空にして音も消す
-          if (internal && 'src' in internal) {
-            internal.src = ''
-          }
-        } catch (e) {
-          console.error('Error while cleaning up video player:', e)
-        }
-      }
-    }
   }, [])
 
+  // --- Render ---
   return (
     <div
       ref={containerRef}
@@ -216,7 +176,6 @@ export default function VideoPlayer({
       {/* Video */}
       <ReactPlayer
         ref={playerRef}
-        key={videoKey}
         url={url}
         playing={playing}
         volume={volume}
@@ -229,7 +188,6 @@ export default function VideoPlayer({
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
         onReady={handleReady}
-        onEnded={onEnded}
         style={{ position: 'absolute', inset: 0 }}
       />
       {/* Action overlay */}
