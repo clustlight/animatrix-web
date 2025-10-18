@@ -1,7 +1,7 @@
 import type { Episode, Season, Series } from '../types'
 import type { Route } from './+types/episode'
 import { useState, useCallback, useEffect } from 'react'
-import { Link } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import VideoPlayer from '~/components/player/VideoPlayer'
 import { getApiBaseUrl } from '../lib/config'
 import { EpisodeTimestamp, EpisodeList, SeasonTabs } from '~/components/Episode'
@@ -121,6 +121,44 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
   const selectedSeason = seasonList.find(s => s.season_id === selectedSeasonId)
   const episodeList = selectedSeason?.episodes || []
   const { progress, download, downloadUrl, error } = useEpisodeDownloader(episodeData)
+  const navigate = useNavigate()
+
+  // 次のエピソード・シーズン判定ロジック
+  const getNextEpisode = () => {
+    if (!selectedSeason) return null
+    const currentIdx = episodeList.findIndex(e => e.episode_id === episodeData.episode_id)
+    if (currentIdx < 0) return null
+
+    // 次の話が同じシーズンにある場合
+    if (currentIdx + 1 < episodeList.length) {
+      return {
+        seasonId: selectedSeason.season_id,
+        episodeId: episodeList[currentIdx + 1].episode_id
+      }
+    }
+
+    // 次のシーズンがある場合
+    const nextSeasonIdx = seasonList.findIndex(s => s.season_id === selectedSeason.season_id) + 1
+    if (nextSeasonIdx < seasonList.length) {
+      const nextSeason = seasonList[nextSeasonIdx]
+      if (nextSeason.episodes && nextSeason.episodes.length > 0) {
+        return {
+          seasonId: nextSeason.season_id,
+          episodeId: nextSeason.episodes[0].episode_id
+        }
+      }
+    }
+    return null
+  }
+
+  // 動画終了時のコールバック
+  const handleVideoEnded = () => {
+    const next = getNextEpisode()
+    if (next) {
+      setSelectedSeasonId(next.seasonId)
+      navigate(`/episode/${next.episodeId}`)
+    }
+  }
 
   return (
     <main className='flex flex-col items-center pt-2 pb-4 min-h-screen bg-black'>
@@ -142,7 +180,11 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
           </div>
           {episodeData.video_url && (
             <div className='tablet-portrait:w-full'>
-              <VideoPlayer url={episodeData.video_url} />
+              <VideoPlayer
+                key={episodeData.episode_id}
+                url={episodeData.video_url}
+                onEnded={handleVideoEnded}
+              />
             </div>
           )}
           <div className='flex flex-col sm:flex-row items-start mt-2 gap-4'>

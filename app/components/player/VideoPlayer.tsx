@@ -12,7 +12,12 @@ import { useInputFocus } from './useInputFocus'
 import { ActionOverlay } from './VIdeoPlayerActionOverlay'
 
 // Video player component
-export default function VideoPlayer({ url }: { url: string }) {
+type VideoPlayerProps = {
+  url: string
+  onEnded?: () => void
+}
+
+export default function VideoPlayer({ url, onEnded }: VideoPlayerProps) {
   const playerRef = useRef<ReactPlayer>(null as unknown as ReactPlayer)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -142,6 +147,11 @@ export default function VideoPlayer({ url }: { url: string }) {
     }
   }, [])
 
+  // 動画終了時コールバック
+  const handleEnded = () => {
+    if (onEnded) onEnded()
+  }
+
   // --- Render ---
   return (
     <div
@@ -188,6 +198,7 @@ export default function VideoPlayer({ url }: { url: string }) {
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
         onReady={handleReady}
+        onEnded={handleEnded} // 追加
         style={{ position: 'absolute', inset: 0 }}
       />
       {/* Action overlay */}
