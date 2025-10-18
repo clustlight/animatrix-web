@@ -4,5 +4,6 @@ export default [
   index('routes/home.tsx'),
   route('search', 'routes/search.tsx'),
   route('series/:seriesId', 'routes/series.tsx'),
+  route('series', 'routes/seriesList.tsx'),
   route('episode/:episodeId', 'routes/episode.tsx')
 ] satisfies RouteConfig
