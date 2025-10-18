@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import type { ChangeEvent } from 'react'
 
 type VideoPlayerSeekBarProps = {
@@ -18,7 +18,7 @@ export default function VideoPlayerSeekBar({
   const [seekValue, setSeekValue] = useState<number | null>(null)
 
   useEffect(() => {
-    onDrag?.(seeking)
+    if (onDrag) onDrag(seeking)
   }, [seeking, onDrag])
 
   useEffect(() => {
@@ -27,12 +27,25 @@ export default function VideoPlayerSeekBar({
     }
   }, [currentTime, seekValue])
 
-  const handleSeek = (e: ChangeEvent<HTMLInputElement>) => setSeekValue(Number(e.target.value))
-  const handleSeekStart = () => setSeeking(true)
-  const handleSeekEnd = () => {
+  useEffect(() => {
+    setSeekValue(null)
+  }, [duration])
+
+  const handleSeek = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+    setSeekValue(Number(e.target.value))
+  }, [])
+
+  const handleSeekStart = useCallback(() => {
+    setSeeking(true)
+  }, [])
+
+  const handleSeekEnd = useCallback(() => {
     if (seekValue !== null) onSeek(seekValue)
     setSeeking(false)
-  }
+  }, [seekValue, onSeek])
+
+  const inputClass =
+    'w-full accent-orange-500 h-1 rounded-xl cursor-pointer hover:h-2 transition-all duration-150'
 
   return (
     <input
@@ -47,7 +60,7 @@ export default function VideoPlayerSeekBar({
       onChange={handleSeek}
       onMouseUp={handleSeekEnd}
       onTouchEnd={handleSeekEnd}
-      className='w-full accent-orange-500 h-1 rounded-xl cursor-pointer'
+      className={inputClass}
     />
   )
 }
