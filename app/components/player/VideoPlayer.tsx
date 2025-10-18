@@ -143,10 +143,7 @@ export default function VideoPlayer({
   }, [fadeOut, showUI, isFullscreen])
 
   // UI visibility condition
-  const isUIVisible = useCallback(
-    () => (isFullscreen ? hovered && !fadeOut : hovered || !playing),
-    [isFullscreen, hovered, fadeOut, playing]
-  )
+  const isUIVisible = isFullscreen ? hovered && !fadeOut : hovered || !playing
 
   // 動画のアスペクト比を取得
   const handleReady = useCallback(() => {
@@ -217,7 +214,7 @@ export default function VideoPlayer({
       {/* Action overlay */}
       {(actionIcon || actionText) && <ActionOverlay icon={actionIcon} text={actionText} />}
       {/* Controls */}
-      {showUI && isUIVisible() && (
+      {showUI && isUIVisible && (
         <VideoPlayerControls
           playing={playing}
           onPlayPause={handlePlayPause}
