@@ -1,10 +1,11 @@
 import type { Episode, Season, Series } from '../types'
 import type { Route } from './+types/episode'
-import { useState, useCallback, useEffect, useMemo } from 'react'
+import { useState, useCallback, useEffect, useMemo, Suspense, lazy } from 'react'
 import { Link, useNavigate } from 'react-router'
-import VideoPlayer from '~/components/player/VideoPlayer'
 import { getApiBaseUrl } from '../lib/config'
 import { EpisodeTimestamp, EpisodeList, SeasonTabs } from '~/components/Episode'
+
+const VideoPlayer = lazy(() => import('~/components/player/VideoPlayer'))
 
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url, { headers: { 'Content-Type': 'application/json' } })
@@ -205,6 +206,10 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
     [episodeList, seasonList, episodeData, selectedSeasonId]
   )
 
+  // クライアントマウント済みフラグ
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+
   return (
     <main className='flex flex-col items-center pt-2 pb-4 min-h-screen bg-black'>
       <Breadcrumbs seriesData={seriesData} seasonData={seasonData} />
@@ -223,8 +228,8 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
               </div>
             </div>
           </div>
-          {episodeData.video_url && typeof window !== "undefined" && (
-            <div className='tablet-portrait:w-full'>
+          {episodeData.video_url && mounted && (
+            <Suspense fallback={null}>
               <VideoPlayer
                 key={episodeData.episode_id}
                 videoKey={episodeData.episode_id}
@@ -249,7 +254,7 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
                   }
                 }}
               />
-            </div>
+            </Suspense>
           )}
           <DownloadSection
             episodeData={episodeData}
