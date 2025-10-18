@@ -163,6 +163,26 @@ export default function VideoPlayer({
     setDuration(0)
   }, [url, videoKey, autoPlay])
 
+  useEffect(() => {
+    return () => {
+      // ReactPlayerの内部videoを停止
+      if (playerRef.current) {
+        try {
+          const internal = playerRef.current.getInternalPlayer?.()
+          if (internal && typeof internal.pause === 'function') {
+            internal.pause()
+          }
+          // さらにsrcを空にして音も消す
+          if (internal && 'src' in internal) {
+            internal.src = ''
+          }
+        } catch (e) {
+          console.error('Error while cleaning up video player:', e)
+        }
+      }
+    }
+  }, [])
+
   return (
     <div
       ref={containerRef}
