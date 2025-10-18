@@ -196,6 +196,7 @@ export default function VideoPlayer({
       {/* Video */}
       <ReactPlayer
         ref={playerRef}
+        key={videoKey}
         url={url}
         playing={playing}
         volume={volume}
