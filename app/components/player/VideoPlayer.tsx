@@ -14,14 +14,16 @@ import { ActionOverlay } from './VIdeoPlayerActionOverlay'
 // Video player component
 export default function VideoPlayer({
   url,
+  videoKey,
   onEnded,
   autoPlay = false,
-  onReady // 追加
+  onReady
 }: {
   url: string
+  videoKey: string
   onEnded?: () => void
   autoPlay?: boolean
-  onReady?: () => void // 追加
+  onReady?: () => void
 }) {
   const playerRef = useRef<ReactPlayer>(null as unknown as ReactPlayer)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -157,7 +159,13 @@ export default function VideoPlayer({
     if (onReady) onReady()
   }, [onReady])
 
-  // --- Render ---
+  useEffect(() => {
+    setPlaying(autoPlay)
+    setIsReady(false)
+    setCurrentTime(0)
+    setDuration(0)
+  }, [url, videoKey, autoPlay])
+
   return (
     <div
       ref={containerRef}
@@ -202,7 +210,7 @@ export default function VideoPlayer({
         onDuration={setDuration}
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
-        onReady={handleReady} // ここでhandleReadyを使う
+        onReady={handleReady}
         onEnded={onEnded}
         style={{ position: 'absolute', inset: 0 }}
       />

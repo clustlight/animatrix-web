@@ -226,7 +226,7 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
           {episodeData.video_url && (
             <div className='tablet-portrait:w-full'>
               <VideoPlayer
-                key={episodeData.episode_id}
+                videoKey={episodeData.episode_id}
                 url={episodeData.video_url}
                 autoPlay={true}
                 onEnded={() => {
