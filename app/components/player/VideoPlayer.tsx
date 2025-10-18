@@ -15,14 +15,15 @@ import { ActionOverlay } from './VIdeoPlayerActionOverlay'
 type VideoPlayerProps = {
   url: string
   onEnded?: () => void
+  autoPlay?: boolean // 追加
 }
 
-export default function VideoPlayer({ url, onEnded }: VideoPlayerProps) {
+export default function VideoPlayer({ url, onEnded, autoPlay = false }: VideoPlayerProps) {
   const playerRef = useRef<ReactPlayer>(null as unknown as ReactPlayer)
   const containerRef = useRef<HTMLDivElement>(null)
 
   // State
-  const [playing, setPlaying] = useState(false)
+  const [playing, setPlaying] = useState(autoPlay) // 初期値を autoPlay に
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [volume, setVolume] = usePersistedVolume()
@@ -151,6 +152,10 @@ export default function VideoPlayer({ url, onEnded }: VideoPlayerProps) {
   const handleEnded = () => {
     if (onEnded) onEnded()
   }
+
+  useEffect(() => {
+    setPlaying(autoPlay)
+  }, [autoPlay, url])
 
   // --- Render ---
   return (

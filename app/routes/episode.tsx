@@ -122,6 +122,7 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
   const episodeList = selectedSeason?.episodes || []
   const { progress, download, downloadUrl, error } = useEpisodeDownloader(episodeData)
   const navigate = useNavigate()
+  const [autoPlay, setAutoPlay] = useState(false)
 
   // 次のエピソード・シーズン判定ロジック
   const getNextEpisode = () => {
@@ -156,9 +157,16 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
     const next = getNextEpisode()
     if (next) {
       setSelectedSeasonId(next.seasonId)
-      navigate(`/episode/${next.episodeId}`)
+      navigate(`/episode/${next.episodeId}`, { state: { autoPlay: true } }) // stateで渡す
     }
   }
+
+  // ページ遷移後に自動再生する
+  useEffect(() => {
+    // location.state から autoPlay を取得
+    const state = window.history.state && window.history.state.usr
+    setAutoPlay(state && state.autoPlay === true)
+  }, [episodeData.episode_id])
 
   return (
     <main className='flex flex-col items-center pt-2 pb-4 min-h-screen bg-black'>
@@ -184,6 +192,7 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
                 key={episodeData.episode_id}
                 url={episodeData.video_url}
                 onEnded={handleVideoEnded}
+                autoPlay={autoPlay}
               />
             </div>
           )}
