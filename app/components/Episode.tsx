@@ -22,20 +22,33 @@ export function SeasonTabs({
   setSelectedSeasonId: (id: string) => void
 }) {
   return (
-    <div className='flex gap-0 mb-1 flex-wrap'>
-      {seasonList.map(season => (
-        <button
-          key={season.season_id}
-          className={`px-2 py-2 rounded-t ${
-            selectedSeasonId === season.season_id
-              ? 'bg-blue-600 text-white font-bold'
-              : 'bg-gray-700 text-gray-200'
-          }`}
-          onClick={() => setSelectedSeasonId(season.season_id)}
-        >
-          {season.season_title}
-        </button>
-      ))}
+    <div className='mb-2 flex justify-center mt-4'>
+      <select
+        className='px-3 py-2 rounded bg-gray-700 text-white font-semibold outline-none focus:outline-none'
+        value={selectedSeasonId}
+        onChange={e => setSelectedSeasonId(e.target.value)}
+        tabIndex={-1}
+        style={{
+          fontSize: '1rem',
+          backgroundColor: '#374151',
+          color: '#fff'
+        }}
+      >
+        {seasonList.map(season => (
+          <option
+            key={season.season_id}
+            value={season.season_id}
+            style={{
+              backgroundColor: '#1e293b',
+              color: '#fff',
+              fontSize: '1rem',
+              padding: '0.5rem 1rem'
+            }}
+          >
+            {season.season_title}
+          </option>
+        ))}
+      </select>
     </div>
   )
 }
@@ -48,7 +61,28 @@ export function EpisodeList({
   episodeData: Episode
 }) {
   return (
-    <div className='overflow-y-auto' style={{ maxHeight: '70vh' }}>
+    <div
+      className='overflow-y-auto mt-4 max-h-[70vh]'
+      style={{
+        scrollbarWidth: 'thin',
+        scrollbarColor: '#2563eb #1e293b'
+      }}
+    >
+      <style>
+        {`
+          .overflow-y-auto::-webkit-scrollbar {
+            width: 8px;
+            background: #1e293b;
+          }
+          .overflow-y-auto::-webkit-scrollbar-thumb {
+            background: #2563eb;
+            border-radius: 4px;
+          }
+          .overflow-y-auto::-webkit-scrollbar-track {
+            background: #1e293b;
+          }
+        `}
+      </style>
       {episodeList.map(ep => (
         <EpisodeListItem
           key={ep.episode_id}
@@ -64,9 +98,7 @@ function EpisodeListItem({ episode, isActive }: { episode: Episode; isActive: bo
   return (
     <Link
       to={`/episode/${episode.episode_id}`}
-      className={`flex items-center gap-2 px-4 py-3 rounded hover:bg-blue-900 transition ${
-        isActive ? 'bg-blue-800' : ''
-      }`}
+      className={`flex items-center gap-2 px-4 py-3 rounded hover:bg-blue-900 transition ${isActive ? 'bg-blue-800' : ''}`}
     >
       <img
         src={episode.thumbnail_url || '/no-thumbnail.png'}
