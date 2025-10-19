@@ -16,11 +16,11 @@ export async function clientLoader({ params }: Route.LoaderArgs) {
   const episodeId = params.episodeId
   try {
     const baseUrl = await getApiBaseUrl()
-    const [episodeData, seasonData, seriesData] = await Promise.all([
+    const [episodeData, seasonData] = await Promise.all([
       fetchJson<Episode>(`${baseUrl}/v1/episode/${episodeId}`),
-      fetchJson<Season>(`${baseUrl}/v1/season/${episodeId.slice(0, episodeId.lastIndexOf('_'))}`),
-      fetchJson<Series>(`${baseUrl}/v1/series/${episodeId.slice(0, episodeId.indexOf('_'))}`)
+      fetchJson<Season>(`${baseUrl}/v1/season/${episodeId.slice(0, episodeId.lastIndexOf('_'))}`)
     ])
+    const seriesData = await fetchJson<Series>(`${baseUrl}/v1/series/${seasonData.series_id}`)
     return { seasonData, episodeData, seriesData }
   } catch (error) {
     return { error: error instanceof Error ? error.message : 'Unknown error' }
