@@ -1,7 +1,7 @@
 import type { Episode, Season, Series } from '../types'
 import type { Route } from './+types/episode'
 import { useState, useCallback, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { Link, useNavigate, useLocation } from 'react-router'
 import VideoPlayer from '~/components/player/VideoPlayer'
 import { getApiBaseUrl } from '../lib/config'
 import { EpisodeTimestamp, EpisodeList, SeasonTabs } from '~/components/Episode'
@@ -122,7 +122,14 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
   const episodeList = selectedSeason?.episodes || []
   const { progress, download, downloadUrl, error } = useEpisodeDownloader(episodeData)
   const navigate = useNavigate()
+  const location = useLocation()
   const [autoPlay, setAutoPlay] = useState(false)
+
+  // ページ遷移後に自動再生する
+  useEffect(() => {
+    // location.state から autoPlay を取得
+    setAutoPlay(location.state?.autoPlay === false ? false : true)
+  }, [episodeData.episode_id, location.state])
 
   // 次のエピソード・シーズン判定ロジック
   const getNextEpisode = () => {
@@ -160,13 +167,6 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
       navigate(`/episode/${next.episodeId}`, { state: { autoPlay: true } }) // stateで渡す
     }
   }
-
-  // ページ遷移後に自動再生する
-  useEffect(() => {
-    // location.state から autoPlay を取得
-    const state = window.history.state && window.history.state.usr
-    setAutoPlay(state && state.autoPlay === false ? false : true)
-  }, [episodeData.episode_id])
 
   return (
     <main className='flex flex-col items-center pt-2 pb-4 min-h-screen bg-black'>
