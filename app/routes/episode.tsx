@@ -165,7 +165,7 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
   useEffect(() => {
     // location.state から autoPlay を取得
     const state = window.history.state && window.history.state.usr
-    setAutoPlay(state && state.autoPlay === false ? false : true)
+    setAutoPlay(state && state.autoPlay === true)
   }, [episodeData.episode_id])
 
   return (
