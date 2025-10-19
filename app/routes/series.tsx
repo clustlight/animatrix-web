@@ -1,14 +1,21 @@
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
-import { useEffect, useRef, useState, type RefObject } from 'react'
-import { Link, useSearchParams } from 'react-router'
-import type { Episode, Season, Series } from '../types'
+import { useCallback, useEffect, useRef, useState, useMemo } from 'react'
+import { useSearchParams } from 'react-router'
+import type { Series } from '../types'
 import type { Route } from './+types/series'
 import 'dayjs/locale/ja'
 import advancedFormat from 'dayjs/plugin/advancedFormat'
 import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
 import { getApiBaseUrl } from '../lib/config'
+import { MoveSeasonModal } from '../components/MoveSeasonModal'
+import { EpisodeList } from '../components/EpisodeList'
+import { EditSeasonModal } from '../components/EditSeasonModal'
+import { useToast } from '../components/ToastProvider'
+import { SeasonTabs } from '../components/SeasonTabs'
+import { DeleteDialog } from '../components/DeleteDialog'
+import { SeriesHeader } from '../components/SeriesHeader'
 
 dayjs.extend(relativeTime)
 dayjs.locale('ja')
@@ -30,160 +37,6 @@ export async function clientLoader({ params }: Route.LoaderArgs) {
   }
 }
 
-type SeasonTabsProps = {
-  seasons: Season[]
-  activeSeason: number
-  onTabClick: (idx: number, seasonId: string) => void
-  tabListRef: RefObject<HTMLDivElement | null>
-  scrollTabs: (dir: 'left' | 'right') => void
-}
-
-function SeasonTabs({
-  seasons,
-  activeSeason,
-  onTabClick,
-  tabListRef,
-  scrollTabs
-}: SeasonTabsProps) {
-  return (
-    <div className='relative mb-6'>
-      {seasons.length > 3 && (
-        <button
-          type='button'
-          className='absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-gray-800 bg-opacity-80 hover:bg-opacity-100 rounded-full p-1 shadow transition-colors'
-          onClick={() => scrollTabs('left')}
-          aria-label='scroll left'
-        >
-          <svg width={24} height={24} fill='none' viewBox='0 0 24 24'>
-            <path
-              d='M15 6l-6 6 6 6'
-              stroke='#fff'
-              strokeWidth={2}
-              strokeLinecap='round'
-              strokeLinejoin='round'
-            />
-          </svg>
-        </button>
-      )}
-      <div
-        ref={tabListRef}
-        className='flex gap-2 border-b overflow-x-auto scrollbar-hide px-8'
-        style={{ scrollBehavior: 'smooth' }}
-      >
-        {seasons.map((season, idx) => {
-          let fontSizeClass = 'text-lg'
-          if (season.season_title.length > 16) fontSizeClass = 'text-sm'
-          else if (season.season_title.length > 10) fontSizeClass = 'text-base'
-          return (
-            <button
-              key={season.season_id}
-              className={`px-4 py-2 font-semibold border-b-2 max-w-[8rem] break-words text-center whitespace-pre-line ${fontSizeClass} ${
-                idx === activeSeason
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500'
-              }`}
-              onClick={() => onTabClick(idx, season.season_id)}
-              title={season.season_title}
-            >
-              {season.season_title}
-            </button>
-          )
-        })}
-      </div>
-      {seasons.length > 3 && (
-        <button
-          type='button'
-          className='absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-gray-800 bg-opacity-80 hover:bg-opacity-100 rounded-full p-1 shadow transition-colors'
-          onClick={() => scrollTabs('right')}
-          aria-label='scroll right'
-        >
-          <svg width={24} height={24} fill='none' viewBox='0 0 24 24'>
-            <path
-              d='M9 6l6 6-6 6'
-              stroke='#fff'
-              strokeWidth={2}
-              strokeLinecap='round'
-              strokeLinejoin='round'
-            />
-          </svg>
-        </button>
-      )}
-    </div>
-  )
-}
-
-type EpisodeListProps = {
-  episodes: Episode[]
-}
-
-function EpisodeList({ episodes }: EpisodeListProps) {
-  const [imgErrorMap, setImgErrorMap] = useState<{ [id: string]: boolean }>({})
-
-  if (!episodes || episodes.length === 0) {
-    return <div className='text-center text-gray-400'>No episodes available</div>
-  }
-
-  const handleImgError = (id: string) => {
-    setImgErrorMap(prev => ({ ...prev, [id]: true }))
-  }
-
-  return (
-    <>
-      {episodes.map(ep => (
-        <Link
-          key={ep.episode_id}
-          to={`/episode/${ep.episode_id}`}
-          className='flex items-center bg-gray-900 hover:bg-gray-800 rounded-lg shadow px-3 py-3 transition-colors'
-          style={{ maxWidth: '100%' }}
-        >
-          <div className='relative w-40 h-24 mr-5 flex-shrink-0'>
-            {imgErrorMap[ep.episode_id] || !ep.thumbnail_url ? (
-              <div className='w-40 h-24 bg-gray-700 flex items-center justify-center rounded'>
-                <span className='text-gray-400 text-xs'>No Image</span>
-              </div>
-            ) : (
-              <img
-                src={ep.thumbnail_url}
-                alt={ep.title}
-                className='w-40 h-24 object-cover rounded'
-                onError={() => handleImgError(ep.episode_id)}
-              />
-            )}
-            <span className='absolute bottom-1 right-1 bg-gray-700 bg text-xs text-white px-2 py-0.5 rounded'>
-              {ep.duration_string}
-            </span>
-          </div>
-          <div className='flex flex-col min-w-0'>
-            <div className='text-base font-medium text-gray-100 break-words'>{ep.title}</div>
-            <div className='text-sm text-gray-400 mt-1 break-words'>
-              {`${dayjs(ep.timestamp).format('YYYY/MM/DD HH:mm:ss (zzz)').replace('Japan Standard Time', 'JST')} (${dayjs(ep.timestamp).fromNow()})`}
-            </div>
-          </div>
-        </Link>
-      ))}
-    </>
-  )
-}
-
-function PortraitImage({ src, alt }: { src?: string; alt: string }) {
-  const [error, setError] = useState(false)
-  if (!src || src === '' || error) {
-    return (
-      <div className='w-36 h-52 bg-gray-700 flex items-center justify-center rounded shadow'>
-        <span className='text-gray-400 text-xs'>No Image</span>
-      </div>
-    )
-  }
-  return (
-    <img
-      src={src}
-      alt={alt}
-      className='w-36 h-52 object-cover rounded shadow'
-      onError={() => setError(true)}
-    />
-  )
-}
-
 export default function Series({ loaderData }: Route.ComponentProps) {
   if (loaderData.error) {
     return (
@@ -199,56 +52,165 @@ export default function Series({ loaderData }: Route.ComponentProps) {
   const seasonParam = searchParams.get('season')
   const tabListRef = useRef<HTMLDivElement>(null)
 
-  const initialSeasonIndex = seasonParam ? seasons.findIndex(s => s.season_id === seasonParam) : 0
+  const initialSeasonIndex = useMemo(
+    () => (seasonParam ? seasons.findIndex(s => s.season_id === seasonParam) : 0),
+    [seasonParam, seasons]
+  )
   const [activeSeason, setActiveSeason] = useState(initialSeasonIndex >= 0 ? initialSeasonIndex : 0)
+  const [editing, setEditing] = useState(false)
+  const [title, setTitle] = useState(data.title)
+  const [editLoading, setEditLoading] = useState(false)
+  const [moveModalOpen, setMoveModalOpen] = useState(false)
+  const [moveSeasonId, setMoveSeasonId] = useState<string | null>(null)
+  const [moveLoading, setMoveLoading] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [editSeasonModalOpen, setEditSeasonModalOpen] = useState(false)
+  const [editSeasonId, setEditSeasonId] = useState<string | null>(null)
+  const [editSeasonTitle, setEditSeasonTitle] = useState<string>('')
+
+  const { showToast } = useToast()
 
   useEffect(() => {
     if (seasonParam) {
       const idx = seasons.findIndex(s => s.season_id === seasonParam)
-      if (idx !== -1 && idx !== activeSeason) {
-        setActiveSeason(idx)
-      }
+      if (idx !== -1 && idx !== activeSeason) setActiveSeason(idx)
     }
   }, [seasonParam, seasons, activeSeason])
 
-  const handleTabClick = (idx: number, seasonId: string) => {
-    setActiveSeason(idx)
-    setSearchParams(prev => {
-      const newParams = new URLSearchParams(prev)
-      newParams.set('season', seasonId)
-      return newParams
-    })
-  }
+  const handleTabClick = useCallback(
+    (idx: number, seasonId: string) => {
+      setActiveSeason(idx)
+      setSearchParams(prev => {
+        const newParams = new URLSearchParams(prev)
+        newParams.set('season', seasonId)
+        return newParams
+      })
+    },
+    [setSearchParams]
+  )
 
-  const scrollTabs = (dir: 'left' | 'right') => {
+  const scrollTabs = useCallback((dir: 'left' | 'right') => {
     if (tabListRef.current) {
-      const scrollAmount = 120
       tabListRef.current.scrollBy({
-        left: dir === 'left' ? -scrollAmount : scrollAmount,
+        left: dir === 'left' ? -120 : 120,
         behavior: 'smooth'
       })
     }
-  }
+  }, [])
+
+  const handleTitleSave = useCallback(async () => {
+    setEditLoading(true)
+    try {
+      const baseUrl = await getApiBaseUrl()
+      const res = await fetch(`${baseUrl}/v1/series/${data.series_id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title })
+      })
+      if (!res.ok) throw new Error(`API error: ${res.status}`)
+      setEditing(false)
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : '更新に失敗しました', 'error')
+    } finally {
+      setEditLoading(false)
+    }
+  }, [title, data.series_id])
+
+  const handleMoveClick = useCallback((seasonId: string) => {
+    setMoveSeasonId(seasonId)
+    setMoveModalOpen(true)
+  }, [])
+
+  const handleMoveSeason = useCallback(
+    async (targetSeriesId: string) => {
+      if (!moveSeasonId) return
+      setMoveLoading(true)
+      try {
+        const baseUrl = await getApiBaseUrl()
+        const res = await fetch(`${baseUrl}/v1/season/${moveSeasonId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ series_id: targetSeriesId })
+        })
+        if (!res.ok) throw new Error('移動失敗')
+        setMoveModalOpen(false)
+        showToast('シリーズを移動しました', 'success')
+        setTimeout(() => {
+          window.location.reload()
+        }, 800)
+      } catch (e) {
+        showToast(e instanceof Error ? e.message : '移動失敗', 'error')
+      } finally {
+        setMoveLoading(false)
+      }
+    },
+    [moveSeasonId, showToast]
+  )
+
+  const handleDeleteSeries = useCallback(async () => {
+    setDeleteLoading(true)
+    try {
+      const baseUrl = await getApiBaseUrl()
+      const res = await fetch(`${baseUrl}/v1/series/${data.series_id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      if (res.status === 409) {
+        const msg = 'このシリーズにはシーズンが存在するため削除できません'
+        showToast(msg, 'error')
+        return
+      }
+      if (!res.ok) throw new Error('削除失敗')
+      showToast('シリーズを削除しました', 'success')
+      window.location.href = '/'
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : '削除失敗'
+      showToast(msg, 'error')
+    } finally {
+      setDeleteLoading(false)
+      setDeleteDialogOpen(false)
+    }
+  }, [data.series_id, showToast])
+
+  // シーズン名保存API
+  const handleSaveSeasonTitle = useCallback(async (seasonId: string, newTitle: string) => {
+    const baseUrl = await getApiBaseUrl()
+    const res = await fetch(`${baseUrl}/v1/season/${seasonId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ season_title: newTitle })
+    })
+    if (!res.ok) throw new Error('保存に失敗しました')
+    window.location.reload()
+  }, [])
 
   useEffect(() => {
     document.title = `${data.title} | animatrix`
   }, [data.title])
 
+  const totalEpisodes = useMemo(
+    () => seasons.reduce((acc, s) => acc + (s.episodes?.length ?? 0), 0),
+    [seasons]
+  )
+
   return (
     <main className='flex items-center justify-center pt-4 pb-4'>
       <div className='flex-1 flex flex-col items-center gap-8 min-h-0'>
-        <div className='flex items-center gap-12'>
-          <div className='w-36 h-52 relative flex-shrink-0'>
-            <PortraitImage src={data.portrait_url} alt={data.title} />
-          </div>
-          <div>
-            <h1 className='text-2xl font-bold'>{data.title}</h1>
-            {/* シーズン数・全話数 */}
-            <div className='text-gray-400 text-sm mt-1'>
-              {`シーズン数: ${seasons.length}　全${seasons.reduce((acc, s) => acc + (s.episodes?.length ?? 0), 0)}話`}
-            </div>
-          </div>
-        </div>
+        <SeriesHeader
+          editing={editing}
+          title={title}
+          setTitle={setTitle}
+          editLoading={editLoading}
+          setEditing={setEditing}
+          handleTitleSave={handleTitleSave}
+          totalSeasons={seasons.length}
+          totalEpisodes={totalEpisodes}
+          onDeleteClick={() => setDeleteDialogOpen(true)}
+          deleteLoading={deleteLoading}
+          portraitUrl={data.portrait_url}
+          originalTitle={data.title}
+        />
         <div className='w-full max-w-2xl px-2'>
           <SeasonTabs
             seasons={seasons}
@@ -256,11 +218,40 @@ export default function Series({ loaderData }: Route.ComponentProps) {
             onTabClick={handleTabClick}
             tabListRef={tabListRef}
             scrollTabs={scrollTabs}
+            setEditSeasonId={setEditSeasonId}
+            setEditSeasonTitle={setEditSeasonTitle}
+            setEditSeasonModalOpen={setEditSeasonModalOpen}
+          />
+          <button
+            className='mb-4 px-3 py-1 bg-blue-700 text-white rounded'
+            onClick={() => handleMoveClick(seasons[activeSeason]?.season_id)}
+            disabled={moveLoading}
+          >
+            このシーズンを他シリーズへ移動
+          </button>
+          <MoveSeasonModal
+            open={moveModalOpen}
+            onClose={() => setMoveModalOpen(false)}
+            seasonId={moveSeasonId ?? ''}
+            onMove={handleMoveSeason}
           />
           <div className='flex flex-col gap-4'>
             <EpisodeList episodes={seasons[activeSeason]?.episodes ?? []} />
           </div>
         </div>
+        <DeleteDialog
+          open={deleteDialogOpen}
+          onDelete={handleDeleteSeries}
+          onCancel={() => setDeleteDialogOpen(false)}
+          loading={deleteLoading}
+        />
+        <EditSeasonModal
+          open={editSeasonModalOpen}
+          onClose={() => setEditSeasonModalOpen(false)}
+          seasonId={editSeasonId ?? ''}
+          initialTitle={editSeasonTitle}
+          onSave={handleSaveSeasonTitle}
+        />
       </div>
     </main>
   )

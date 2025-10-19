@@ -82,12 +82,12 @@ function Breadcrumbs({ seriesData, seasonData }: { seriesData: Series; seasonDat
   return (
     <div className='flex flex-col sm:flex-row items-start sm:items-center justify-between mt-2 w-full max-w-10/12 px-3 gap-2'>
       <nav className='flex items-center gap-2 text-xs sm:text-sm text-gray-400'>
-        <Link to={`/series/${seriesData.series_id}`} className='hover:underline text-blue-500'>
+        <Link to={`/series/${seasonData.series_id}`} className='hover:underline text-blue-500'>
           {seriesData.title}
         </Link>
         <span>&gt;</span>
         <Link
-          to={`/series/${seriesData.series_id}?season=${seasonData.season_id}`}
+          to={`/series/${seasonData.series_id}?season=${seasonData.season_id}`}
           className='hover:underline text-blue-500'
         >
           {seasonData.season_title}
@@ -116,36 +116,53 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
     document.title = `${episodeData.title} | animatrix`
   }, [episodeData.title])
 
-  const seasonList = seriesData.seasons || []
   const [selectedSeasonId, setSelectedSeasonId] = useState<string>(seasonData.season_id)
-  const selectedSeason = seasonList.find(s => s.season_id === selectedSeasonId)
-  const episodeList = selectedSeason?.episodes || []
+  const [episodeList, setEpisodeList] = useState<Episode[]>(seasonData.episodes || [])
+  const [seasonList, setSeasonList] = useState<Season[]>(seriesData.seasons || [])
+
+  // selectedSeasonIdが変わったらseasonとseriesを再取得
+  useEffect(() => {
+    if (!selectedSeasonId) return
+    getApiBaseUrl().then(async baseUrl => {
+      try {
+        const season = await fetchJson<Season>(`${baseUrl}/v1/season/${selectedSeasonId}`)
+        setEpisodeList(season.episodes || [])
+        // seasonのseries_idからseriesを再取得
+        const series = await fetchJson<Series>(`${baseUrl}/v1/series/${season.series_id}`)
+        setSeasonList(series.seasons || [])
+      } catch {
+        setEpisodeList([])
+        setSeasonList([])
+      }
+    })
+  }, [selectedSeasonId])
+
   const { progress, download, downloadUrl, error } = useEpisodeDownloader(episodeData)
   const navigate = useNavigate()
   const [autoPlay, setAutoPlay] = useState(false)
 
   // 次のエピソード・シーズン判定ロジック
   const getNextEpisode = () => {
-    if (!selectedSeason) return null
+    if (!episodeList.length) return null
     const currentIdx = episodeList.findIndex(e => e.episode_id === episodeData.episode_id)
     if (currentIdx < 0) return null
 
     // 次の話が同じシーズンにある場合
     if (currentIdx + 1 < episodeList.length) {
       return {
-        seasonId: selectedSeason.season_id,
+        seasonId: selectedSeasonId,
         episodeId: episodeList[currentIdx + 1].episode_id
       }
     }
 
     // 次のシーズンがある場合
-    const nextSeasonIdx = seasonList.findIndex(s => s.season_id === selectedSeason.season_id) + 1
+    const nextSeasonIdx = seasonList.findIndex(s => s.season_id === selectedSeasonId) + 1
     if (nextSeasonIdx < seasonList.length) {
       const nextSeason = seasonList[nextSeasonIdx]
-      if (nextSeason.episodes && nextSeason.episodes.length > 0) {
+      if (nextSeason.season_id) {
         return {
           seasonId: nextSeason.season_id,
-          episodeId: nextSeason.episodes[0].episode_id
+          episodeId: nextSeason.episodes?.[0]?.episode_id
         }
       }
     }

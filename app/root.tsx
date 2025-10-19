@@ -9,6 +9,8 @@ import {
   Link
 } from 'react-router'
 
+import { ToastProvider } from './components/ToastProvider'
+
 import type { Route } from './+types/root'
 import './app.css'
 import { Search } from './components/Search'
@@ -37,9 +39,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body className='bg-gray-900 text-gray-100 font-sans antialiased'>
-        {children}
-        <ScrollRestoration />
-        <Scripts />
+        <ToastProvider>
+          {children}
+          <ScrollRestoration />
+          <Scripts />
+        </ToastProvider>
       </body>
     </html>
   )

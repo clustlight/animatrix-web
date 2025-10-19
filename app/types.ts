@@ -14,6 +14,7 @@ export interface Episode {
 }
 
 export interface Season {
+  series_id: string
   season_id: string
   season_title: string
   season_title_yomi: string

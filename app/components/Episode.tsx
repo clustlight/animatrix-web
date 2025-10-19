@@ -5,6 +5,8 @@ import relativeTime from 'dayjs/plugin/relativeTime'
 import advancedFormat from 'dayjs/plugin/advancedFormat'
 import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
+import { useState } from 'react'
+import { NoImage } from './NoImage'
 
 dayjs.extend(relativeTime)
 dayjs.locale('ja')
@@ -95,17 +97,23 @@ export function EpisodeList({
 }
 
 function EpisodeListItem({ episode, isActive }: { episode: Episode; isActive: boolean }) {
+  const [imgError, setImgError] = useState(false)
   return (
     <Link
       to={`/episode/${episode.episode_id}`}
       className={`flex items-center gap-2 px-4 py-3 rounded hover:bg-blue-900 transition ${isActive ? 'bg-blue-800' : ''}`}
     >
-      <img
-        src={episode.thumbnail_url || '/no-thumbnail.png'}
-        alt={episode.title}
-        className='w-12 h-7 sm:w-16 sm:h-9 md:w-20 md:h-11 object-cover rounded'
-        style={{ aspectRatio: '16/9' }}
-      />
+      {imgError || !episode.thumbnail_url ? (
+        <NoImage width='w-12 sm:w-16 md:w-20' height='h-7 sm:h-9 md:h-11' />
+      ) : (
+        <img
+          src={episode.thumbnail_url}
+          alt={episode.title}
+          className='w-12 h-7 sm:w-16 sm:h-9 md:w-20 md:h-11 object-cover rounded'
+          style={{ aspectRatio: '16/9' }}
+          onError={() => setImgError(true)}
+        />
+      )}
       <div className='text-[11px] sm:text-[15px] lg:text-sm xl:text-sm font-semibold text-white text-wrap'>
         {episode.title}
       </div>
