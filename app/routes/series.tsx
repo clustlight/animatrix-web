@@ -163,7 +163,9 @@ export default function Series({ loaderData }: Route.ComponentProps) {
       }
       if (!res.ok) throw new Error('削除失敗')
       showToast('シリーズを削除しました', 'success')
-      window.location.href = '/'
+      setTimeout(() => {
+        window.location.href = '/'
+      }, 800)
     } catch (e) {
       const msg = e instanceof Error ? e.message : '削除失敗'
       showToast(msg, 'error')
