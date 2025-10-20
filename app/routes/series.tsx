@@ -210,7 +210,14 @@ export default function Series({ loaderData }: Route.ComponentProps) {
           totalEpisodes={totalEpisodes}
           onDeleteClick={() => setDeleteDialogOpen(true)}
           deleteLoading={deleteLoading}
-          portraitUrl={data.portrait_url}
+          portraitUrl={
+            seasons[activeSeason]
+              ? data.portrait_url.replace(
+                  /\/([^/]+)\/portrait\.png$/,
+                  `/${seasons[activeSeason].season_id.replace(/_[^_]+$/, '')}/portrait.png`
+                )
+              : data.portrait_url
+          }
           originalTitle={data.title}
         />
         <div className='w-full max-w-2xl px-2'>
