@@ -238,7 +238,6 @@ export default function Series({ loaderData }: Route.ComponentProps) {
               className='flex items-center justify-center w-10 h-10 ml-2 bg-blue-700 hover:bg-blue-800 text-white rounded-full shadow transition-colors cursor-pointer'
               onClick={() => handleMoveClick(seasons[activeSeason]?.season_id)}
               disabled={moveLoading}
-              title='このシーズンを他シリーズへ移動'
               type='button'
               style={{ alignSelf: 'flex-start' }}
             >
