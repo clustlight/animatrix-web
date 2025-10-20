@@ -37,16 +37,16 @@ export function SeasonTabs({
       )}
       <div
         ref={tabListRef}
-        className='flex gap-2 border-b overflow-x-auto scrollbar-hide px-8'
+        className='flex gap-1 border-b overflow-x-auto scrollbar-hide px-4'
         style={{ scrollBehavior: 'smooth' }}
       >
         {seasons.map((season, idx) => {
           const len = season.season_title.length
-          const fontSizeClass = len > 16 ? 'text-sm' : len > 10 ? 'text-base' : 'text-lg'
+          const fontSizeClass = len > 16 ? 'text-xs' : len > 10 ? 'text-sm' : 'text-base'
           return (
             <div key={season.season_id} className='relative flex items-center'>
               <button
-                className={`px-4 py-2 font-semibold border-b-2 max-w-[8rem] break-words text-center whitespace-pre-line ${fontSizeClass} ${
+                className={`px-4 py-2 font-semibold border-b-2 max-w-[8rem] break-words text-center whitespace-pre-line cursor-pointer ${fontSizeClass} ${
                   idx === activeSeason
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500'
@@ -57,17 +57,17 @@ export function SeasonTabs({
                 {season.season_title}
               </button>
               <button
-                className='ml-1 text-gray-400 hover:text-blue-500'
+                className='ml-0.5 text-gray-400 hover:text-blue-500 cursor-pointer'
                 title='シーズン名編集'
                 onClick={() => {
                   setEditSeasonId(season.season_id)
                   setEditSeasonTitle(season.season_title)
                   setEditSeasonModalOpen(true)
                 }}
-                style={{ fontSize: 16 }}
+                style={{ fontSize: 14 }}
                 type='button'
               >
-                <MdEdit size={18} />
+                <MdEdit size={16} />
               </button>
             </div>
           )

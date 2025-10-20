@@ -11,9 +11,10 @@ type MoveSeasonModalProps = {
   onClose: () => void
   seasonId: string
   onMove: (targetSeriesId: string) => void
+  seasonTitle?: string // 追加: シーズン名を受け取る
 }
 
-export function MoveSeasonModal({ open, onClose, onMove }: MoveSeasonModalProps) {
+export function MoveSeasonModal({ open, onClose, onMove, seasonTitle }: MoveSeasonModalProps) {
   const [seriesList, setSeriesList] = useState<Series[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -79,6 +80,11 @@ export function MoveSeasonModal({ open, onClose, onMove }: MoveSeasonModalProps)
           minHeight: 180
         }}
       >
+        {seasonTitle && (
+          <div className='mb-2 text-base text-blue-300 font-semibold text-center'>
+            {seasonTitle}
+          </div>
+        )}
         <h2 className='text-lg font-bold mb-2'>移動先を選択</h2>
         <input
           type='text'
@@ -118,7 +124,10 @@ export function MoveSeasonModal({ open, onClose, onMove }: MoveSeasonModalProps)
                         onError={() => handleImgError(s.series_id)}
                       />
                     )}
-                    <span className='flex-1'>{s.title}</span>
+                    <span className='flex-1 flex flex-col'>
+                      <span>{s.title}</span>
+                      <span className='text-xs text-gray-400'>ID: {s.series_id}</span>
+                    </span>
                   </button>
                 </li>
               ))}

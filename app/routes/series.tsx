@@ -221,6 +221,8 @@ export default function Series({ loaderData }: Route.ComponentProps) {
           originalTitle={data.title}
         />
         <div className='w-full max-w-2xl px-2'>
+          <div className='flex items-center'>
+            <div className='flex-1'>
           <SeasonTabs
             seasons={seasons}
             activeSeason={activeSeason}
@@ -231,18 +233,24 @@ export default function Series({ loaderData }: Route.ComponentProps) {
             setEditSeasonTitle={setEditSeasonTitle}
             setEditSeasonModalOpen={setEditSeasonModalOpen}
           />
+            </div>
           <button
-            className='mb-4 px-3 py-1 bg-blue-700 text-white rounded'
+              className='flex items-center justify-center w-10 h-10 ml-2 bg-blue-700 hover:bg-blue-800 text-white rounded-full shadow transition-colors cursor-pointer'
             onClick={() => handleMoveClick(seasons[activeSeason]?.season_id)}
             disabled={moveLoading}
+              title='このシーズンを他シリーズへ移動'
+              type='button'
+              style={{ alignSelf: 'flex-start' }}
           >
-            このシーズンを他シリーズへ移動
+              <MdSwapHoriz size={24} />
           </button>
+          </div>
           <MoveSeasonModal
             open={moveModalOpen}
             onClose={() => setMoveModalOpen(false)}
             seasonId={moveSeasonId ?? ''}
             onMove={handleMoveSeason}
+            seasonTitle={seasons.find(s => s.season_id === moveSeasonId)?.season_title}
           />
           <div className='flex flex-col gap-4'>
             <EpisodeList episodes={seasons[activeSeason]?.episodes ?? []} />
