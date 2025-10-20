@@ -72,7 +72,7 @@ export function SeriesHeader({
               {title}
               <button
                 onClick={() => setEditing(true)}
-                className='ml-2 text-blue-400'
+                className='ml-2 text-blue-400 cursor-pointer'
                 aria-label='編集'
               >
                 <MdEdit size={22} />
@@ -89,7 +89,6 @@ export function SeriesHeader({
           disabled={deleteLoading}
         >
           <MdDelete size={20} />
-          シリーズを削除
         </button>
       </div>
     </div>
