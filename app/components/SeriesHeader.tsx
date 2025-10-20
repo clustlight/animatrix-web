@@ -33,7 +33,7 @@ export function SeriesHeader({
 }: SeriesHeaderProps) {
   return (
     <div className='flex items-center gap-12'>
-      <div className='w-36 h-52 relative flex-shrink-0'>
+      <div className='w-40 h-60 relative flex-shrink-0'>
         <PortraitImage src={portraitUrl} alt={title} />
       </div>
       <div>
