@@ -16,6 +16,7 @@ import { useToast } from '../components/ToastProvider'
 import { SeasonTabs } from '../components/SeasonTabs'
 import { DeleteDialog } from '../components/DeleteDialog'
 import { SeriesHeader } from '../components/SeriesHeader'
+import { MdSwapHoriz } from 'react-icons/md'
 
 dayjs.extend(relativeTime)
 dayjs.locale('ja')
@@ -74,13 +75,12 @@ export default function Series({ loaderData }: Route.ComponentProps) {
   useEffect(() => {
     if (seasonParam) {
       const idx = seasons.findIndex(s => s.season_id === seasonParam)
-      if (idx !== -1 && idx !== activeSeason) setActiveSeason(idx)
+      if (idx !== -1) setActiveSeason(idx)
     }
-  }, [seasonParam, seasons, activeSeason])
+  }, [seasonParam, seasons])
 
   const handleTabClick = useCallback(
     (idx: number, seasonId: string) => {
-      setActiveSeason(idx)
       setSearchParams(prev => {
         const newParams = new URLSearchParams(prev)
         newParams.set('season', seasonId)
@@ -223,27 +223,27 @@ export default function Series({ loaderData }: Route.ComponentProps) {
         <div className='w-full max-w-2xl px-2'>
           <div className='flex items-center'>
             <div className='flex-1'>
-          <SeasonTabs
-            seasons={seasons}
-            activeSeason={activeSeason}
-            onTabClick={handleTabClick}
-            tabListRef={tabListRef}
-            scrollTabs={scrollTabs}
-            setEditSeasonId={setEditSeasonId}
-            setEditSeasonTitle={setEditSeasonTitle}
-            setEditSeasonModalOpen={setEditSeasonModalOpen}
-          />
+              <SeasonTabs
+                seasons={seasons}
+                activeSeason={activeSeason}
+                onTabClick={handleTabClick}
+                tabListRef={tabListRef}
+                scrollTabs={scrollTabs}
+                setEditSeasonId={setEditSeasonId}
+                setEditSeasonTitle={setEditSeasonTitle}
+                setEditSeasonModalOpen={setEditSeasonModalOpen}
+              />
             </div>
-          <button
+            <button
               className='flex items-center justify-center w-10 h-10 ml-2 bg-blue-700 hover:bg-blue-800 text-white rounded-full shadow transition-colors cursor-pointer'
-            onClick={() => handleMoveClick(seasons[activeSeason]?.season_id)}
-            disabled={moveLoading}
+              onClick={() => handleMoveClick(seasons[activeSeason]?.season_id)}
+              disabled={moveLoading}
               title='このシーズンを他シリーズへ移動'
               type='button'
               style={{ alignSelf: 'flex-start' }}
-          >
+            >
               <MdSwapHoriz size={24} />
-          </button>
+            </button>
           </div>
           <MoveSeasonModal
             open={moveModalOpen}
