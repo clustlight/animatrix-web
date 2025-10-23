@@ -26,7 +26,7 @@ export function SeasonTabs({
   return (
     <div className='mb-2 flex justify-center mt-4'>
       <select
-        className='px-3 py-2 rounded bg-gray-700 text-white font-semibold outline-none focus:outline-none'
+        className='px-3 py-2 rounded bg-gray-700 text-white font-semibold outline-none focus:outline-none cursor-pointer'
         value={selectedSeasonId}
         onChange={e => setSelectedSeasonId(e.target.value)}
         tabIndex={-1}

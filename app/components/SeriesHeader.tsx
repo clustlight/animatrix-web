@@ -50,8 +50,8 @@ export function SeriesHeader({
               <button
                 onClick={handleTitleSave}
                 disabled={editLoading}
-                className='ml-2 text-green-400'
-                aria-label='保存'
+                className='ml-2 text-green-400 cursor-pointer'
+                aria-label='save'
               >
                 <MdCheck size={24} />
               </button>
@@ -61,8 +61,8 @@ export function SeriesHeader({
                   setTitle(originalTitle)
                 }}
                 disabled={editLoading}
-                className='ml-1 text-red-400'
-                aria-label='キャンセル'
+                className='ml-1 text-red-400 cursor-pointer'
+                aria-label='cancel'
               >
                 <MdClose size={24} />
               </button>
