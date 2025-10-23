@@ -37,14 +37,18 @@ export function SeriesHeader({
         <PortraitImage src={portraitUrl} alt={title} />
       </div>
       <div>
-        <h1 className='text-2xl font-bold flex items-center gap-2'>
+        <h1
+          className={`font-bold flex items-center gap-2 max-w-[22rem] break-words whitespace-normal ${
+            title.length > 40 ? 'text-base' : title.length > 24 ? 'text-lg' : 'text-2xl'
+          }`}
+        >
           {editing ? (
             <>
               <input
                 type='text'
                 value={title}
                 onChange={e => setTitle(e.target.value)}
-                className='bg-gray-800 text-white px-2 py-1 rounded'
+                className='bg-gray-800 text-white px-2 py-1 rounded w-full max-w-[20rem]'
                 disabled={editLoading}
               />
               <button
@@ -69,7 +73,13 @@ export function SeriesHeader({
             </>
           ) : (
             <>
-              {title}
+              <span
+                className={`truncate block max-w-[20rem] break-words whitespace-normal ${
+                  title.length > 40 ? 'text-base' : title.length > 24 ? 'text-lg' : 'text-2xl'
+                }`}
+              >
+                {title}
+              </span>
               <button
                 onClick={() => setEditing(true)}
                 className='ml-2 text-blue-400 cursor-pointer'
