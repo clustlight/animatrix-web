@@ -24,7 +24,9 @@ function SeriesGridItem({ series }: { series: Series }) {
           onError={() => setImgError(true)}
         />
       )}
-      <span className='text-sm text-gray-200 text-center line-clamp-2'>{series.title}</span>
+      <span className='text-sm text-gray-200 text-center break-words line-clamp-2 max-w-[300px] w-full whitespace-normal'>
+        {series.title}
+      </span>
     </Link>
   )
 }
@@ -53,7 +55,7 @@ export function SeriesGrid({
               <h2 className='text-lg font-bold mr-4 text-left w-full'>{title}</h2>
             </div>
           )}
-          <div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6'>
+          <div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 md:gap-8 lg:gap-10'>
             {seriesList.map(series => (
               <SeriesGridItem key={series.series_id} series={series} />
             ))}
