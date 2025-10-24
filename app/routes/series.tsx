@@ -47,8 +47,8 @@ export default function Series({ loaderData }: Route.ComponentProps) {
     )
   }
 
-  const data = loaderData as Series
-  const [seasons, setSeasons] = useState(data.seasons ?? [])
+  const seriesData = loaderData as Series
+  const [seasons, setSeasons] = useState(seriesData.seasons ?? [])
   const [searchParams, setSearchParams] = useSearchParams()
   const seasonParam = searchParams.get('season')
   const tabListRef = useRef<HTMLDivElement>(null)
@@ -59,7 +59,7 @@ export default function Series({ loaderData }: Route.ComponentProps) {
   )
   const [activeSeason, setActiveSeason] = useState(initialSeasonIndex >= 0 ? initialSeasonIndex : 0)
   const [editing, setEditing] = useState(false)
-  const [title, setTitle] = useState(data.title)
+  const [title, setTitle] = useState(seriesData.title)
   const [editLoading, setEditLoading] = useState(false)
   const [moveModalOpen, setMoveModalOpen] = useState(false)
   const [moveSeasonId, setMoveSeasonId] = useState<string | null>(null)
@@ -103,7 +103,7 @@ export default function Series({ loaderData }: Route.ComponentProps) {
     setEditLoading(true)
     try {
       const baseUrl = await getApiBaseUrl()
-      const res = await fetch(`${baseUrl}/v1/series/${data.series_id}`, {
+      const res = await fetch(`${baseUrl}/v1/series/${seriesData.series_id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title })
@@ -115,7 +115,7 @@ export default function Series({ loaderData }: Route.ComponentProps) {
     } finally {
       setEditLoading(false)
     }
-  }, [title, data.series_id])
+  }, [title, seriesData.series_id])
 
   const handleMoveClick = useCallback((seasonId: string) => {
     setMoveSeasonId(seasonId)
@@ -152,7 +152,7 @@ export default function Series({ loaderData }: Route.ComponentProps) {
     setDeleteLoading(true)
     try {
       const baseUrl = await getApiBaseUrl()
-      const res = await fetch(`${baseUrl}/v1/series/${data.series_id}`, {
+      const res = await fetch(`${baseUrl}/v1/series/${seriesData.series_id}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' }
       })
@@ -173,11 +173,9 @@ export default function Series({ loaderData }: Route.ComponentProps) {
       setDeleteLoading(false)
       setDeleteDialogOpen(false)
     }
-  }, [data.series_id, showToast])
+  }, [seriesData.series_id, showToast])
 
-  useEffect(() => {
-    document.title = `${data.title} | animatrix`
-  }, [data.title])
+  const pageTitle = `${seriesData.title} | animatrix`
 
   const totalEpisodes = useMemo(
     () => seasons.reduce((acc, s) => acc + (s.episodes?.length ?? 0), 0),
@@ -223,6 +221,7 @@ export default function Series({ loaderData }: Route.ComponentProps) {
 
   return (
     <main className='flex items-center justify-center pt-4 pb-4'>
+      <title>{pageTitle}</title>
       <div className='flex-1 flex flex-col items-center gap-8 min-h-0'>
         <SeriesHeader
           editing={editing}
@@ -237,13 +236,13 @@ export default function Series({ loaderData }: Route.ComponentProps) {
           deleteLoading={deleteLoading}
           portraitUrl={
             seasons[activeSeason]
-              ? data.portrait_url.replace(
+              ? seriesData.portrait_url.replace(
                   /\/([^/]+)\/portrait\.png$/,
                   `/${seasons[activeSeason].season_id.replace(/_[^_]+$/, '')}/portrait.png`
                 )
-              : data.portrait_url
+              : seriesData.portrait_url
           }
-          originalTitle={data.title}
+          originalTitle={seriesData.title}
         />
         <div className='w-full max-w-2xl px-2'>
           <div className='flex items-center'>

@@ -112,13 +112,12 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
   }
 
   const { seriesData, seasonData, episodeData } = loaderData
-  useEffect(() => {
-    document.title = `${episodeData.title} | animatrix`
-  }, [episodeData.title])
 
   const [selectedSeasonId, setSelectedSeasonId] = useState<string>(seasonData.season_id)
   const [episodeList, setEpisodeList] = useState<Episode[]>(seasonData.episodes || [])
   const [seasonList, setSeasonList] = useState<Season[]>(seriesData.seasons || [])
+
+  const pageTitle = `${episodeData.title} | animatrix`
 
   // selectedSeasonIdが変わったらseasonとseriesを再取得
   useEffect(() => {
@@ -187,6 +186,7 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
 
   return (
     <main className='flex flex-col items-center pt-2 pb-4 min-h-screen bg-black'>
+      <title>{pageTitle}</title>
       <Breadcrumbs seriesData={seriesData} seasonData={seasonData} />
       <div className='flex flex-col lg:flex-row w-full max-w-10/12 px-2 gap-4 mt-4'>
         <div className='flex flex-col min-w-0 space-y-2 tablet-portrait:w-full flex-1 tablet-portrait:flex-none'>

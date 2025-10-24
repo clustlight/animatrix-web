@@ -47,6 +47,8 @@ export default function SeriesList({
   const [error, setError] = useState<string | null>(loaderData?.error || null)
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
 
+  const pageTitle = `Series List | animatrix`
+
   useEffect(() => {
     if (!loaderData) {
       clientLoader().then(data => {
@@ -71,6 +73,7 @@ export default function SeriesList({
 
   return (
     <main className='flex items-center justify-center'>
+      <title>{pageTitle}</title>
       <div className='flex-1 flex flex-col items-center gap-6 min-h-0 mb-10'>
         <div className='flex items-center w-full max-w-7xl mt-6 px-4'>
           <h1 className='text-2xl font-bold flex items-center gap-4 flex-1 justify-start'>

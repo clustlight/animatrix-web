@@ -77,6 +77,7 @@ export default function Home() {
 
   return (
     <main className='flex items-center justify-center pt-1 pb-4'>
+      <title>animatrix</title>
       <div className='flex-1 flex flex-col items-center gap-16 min-h-0'>
         <SeriesGrid
           seriesList={latestSeriesList}
