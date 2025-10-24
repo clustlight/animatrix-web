@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getApiBaseUrl } from '../lib/config'
 import type { Episode, Series } from '../types'
-import type { Route } from './+types/home'
 import { SeriesGrid } from '../components/SeriesGrid'
 
 // Fetch Series information by seriesId
@@ -14,10 +13,6 @@ async function fetchSeries(seriesId: string): Promise<Series | null> {
   } catch {
     return null
   }
-}
-
-export function meta({}: Route.MetaArgs) {
-  return [{ title: 'animatrix' }, { name: 'description', content: 'ABM archive-player web' }]
 }
 
 function getLatestSeriesList(episodes: Episode[], seriesMap: Record<string, Series>) {
