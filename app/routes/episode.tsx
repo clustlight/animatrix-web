@@ -5,6 +5,8 @@ import { Link, useNavigate } from 'react-router'
 import VideoPlayer from '~/components/player/VideoPlayer'
 import { getApiBaseUrl } from '../lib/config'
 import { EpisodeTimestamp, EpisodeList, SeasonTabs } from '~/components/Episode'
+import { MdEdit, MdCheck, MdClose, MdDownload } from 'react-icons/md'
+import { useToast } from '../components/ToastProvider'
 
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url, { headers: { 'Content-Type': 'application/json' } })
@@ -30,19 +32,16 @@ export async function clientLoader({ params }: Route.LoaderArgs) {
 type DownloaderResult = {
   progress: number | null
   download: () => Promise<void>
-  downloadUrl: string | null
   error: string | null
 }
 
 function useEpisodeDownloader(episodeData: Episode): DownloaderResult {
   const [progress, setProgress] = useState<number | null>(null)
-  const [downloadUrl, setDownloadUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const download = useCallback(async () => {
     setProgress(0)
     setError(null)
-    setDownloadUrl(null)
     try {
       const res = await fetch(episodeData.video_url, { credentials: 'include' })
       if (!res.body) throw new Error('Streaming is not supported')
@@ -61,21 +60,24 @@ function useEpisodeDownloader(episodeData: Episode): DownloaderResult {
       }
       const blob = new Blob(chunks)
       const url = URL.createObjectURL(blob)
-      setDownloadUrl(url)
+
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${episodeData.episode_id}__${episodeData.title}.mp4`
+      document.body.appendChild(a)
+      a.click()
+      setTimeout(() => {
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+      }, 1000)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Download failed')
     } finally {
       setProgress(null)
     }
-  }, [episodeData.video_url])
+  }, [episodeData.video_url, episodeData.episode_id, episodeData.title])
 
-  useEffect(() => {
-    return () => {
-      if (downloadUrl) URL.revokeObjectURL(downloadUrl)
-    }
-  }, [downloadUrl])
-
-  return { progress, download, downloadUrl, error }
+  return { progress, download, error }
 }
 
 function Breadcrumbs({ seriesData, seasonData }: { seriesData: Series; seasonData: Season }) {
@@ -136,7 +138,7 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
     })
   }, [selectedSeasonId])
 
-  const { progress, download, downloadUrl, error } = useEpisodeDownloader(episodeData)
+  const { progress, download, error } = useEpisodeDownloader(episodeData)
   const navigate = useNavigate()
   const [autoPlay, setAutoPlay] = useState(false)
 
@@ -220,7 +222,7 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
               className='ml-0 cursor-pointer transition-colors bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded shadow'
               style={{ pointerEvents: progress !== null ? 'none' : 'auto' }}
             >
-              Download Video
+              <MdDownload size={22} />
             </button>
             <div className='flex flex-col items-start gap-1 min-w-[180px] self-center'>
               {progress !== null && (
@@ -233,16 +235,6 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
                   </div>
                   <div className='text-center text-xs mt-0.5'>{progress}%</div>
                 </div>
-              )}
-              {downloadUrl && (
-                <a
-                  href={downloadUrl}
-                  download={`${episodeData.episode_id}__${seriesData.title}__${episodeData.title}.mp4`}
-                  className='px-3 py-1 rounded font-semibold bg-blue-600 text-white shadow hover:bg-blue-700 hover:text-white transition-colors cursor-pointer border border-blue-700'
-                  style={{ textDecoration: 'none' }}
-                >
-                  Download Link (Click to save)
-                </a>
               )}
               {error && <div className='text-red-500'>{error}</div>}
             </div>
