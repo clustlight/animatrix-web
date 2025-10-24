@@ -48,7 +48,7 @@ export default function Series({ loaderData }: Route.ComponentProps) {
   }
 
   const data = loaderData as Series
-  const seasons = data.seasons ?? []
+  const [seasons, setSeasons] = useState(data.seasons ?? [])
   const [searchParams, setSearchParams] = useSearchParams()
   const seasonParam = searchParams.get('season')
   const tabListRef = useRef<HTMLDivElement>(null)
@@ -175,18 +175,6 @@ export default function Series({ loaderData }: Route.ComponentProps) {
     }
   }, [data.series_id, showToast])
 
-  // シーズン名保存API
-  const handleSaveSeasonTitle = useCallback(async (seasonId: string, newTitle: string) => {
-    const baseUrl = await getApiBaseUrl()
-    const res = await fetch(`${baseUrl}/v1/season/${seasonId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ season_title: newTitle })
-    })
-    if (!res.ok) throw new Error('保存に失敗しました')
-    window.location.reload()
-  }, [])
-
   useEffect(() => {
     document.title = `${data.title} | animatrix`
   }, [data.title])
@@ -194,6 +182,43 @@ export default function Series({ loaderData }: Route.ComponentProps) {
   const totalEpisodes = useMemo(
     () => seasons.reduce((acc, s) => acc + (s.episodes?.length ?? 0), 0),
     [seasons]
+  )
+
+  const updateSeasonTitle = useCallback(async (seasonId: string, newTitle: string) => {
+    const baseUrl = await getApiBaseUrl()
+    const res = await fetch(`${baseUrl}/v1/season/${seasonId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ season_title: newTitle })
+    })
+    if (!res.ok) throw new Error('保存に失敗しました')
+    setEditSeasonTitle(newTitle)
+    setSeasons(prev =>
+      prev.map(s => (s.season_id === seasonId ? { ...s, season_title: newTitle } : s))
+    )
+  }, [])
+
+  const deleteEpisode = useCallback(
+    async (episodeId: string, episodeTitle?: string) => {
+      const baseUrl = await getApiBaseUrl()
+      const res = await fetch(`${baseUrl}/v1/episode/${episodeId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      if (!res.ok) showToast('エピソード削除に失敗しました', 'error')
+      setSeasons(prev =>
+        prev.map(s =>
+          s.season_id === editSeasonId
+            ? {
+                ...s,
+                episodes: s.episodes?.filter(ep => ep.episode_id !== episodeId) ?? []
+              }
+            : s
+        )
+      )
+      showToast(`${episodeTitle ?? ''} を削除しました`, 'success')
+    },
+    [editSeasonId, showToast]
   )
 
   return (
@@ -266,7 +291,9 @@ export default function Series({ loaderData }: Route.ComponentProps) {
           onClose={() => setEditSeasonModalOpen(false)}
           seasonId={editSeasonId ?? ''}
           initialTitle={editSeasonTitle}
-          onSave={handleSaveSeasonTitle}
+          onSave={updateSeasonTitle}
+          episodes={seasons.find(s => s.season_id === editSeasonId)?.episodes ?? []}
+          onDeleteEpisode={deleteEpisode}
         />
       </div>
     </main>
