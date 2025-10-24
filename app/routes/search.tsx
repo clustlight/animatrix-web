@@ -45,17 +45,16 @@ export default function Search() {
   const pageTitle = keyword ? `検索結果: ${keyword} | animatrix` : '検索 | animatrix'
 
   return (
-    <main className='flex items-center justify-center pt-8 pb-4'>
+    <main className='flex items-center justify-center'>
       <title>{pageTitle}</title>
-      <div className='flex-1 flex flex-col items-center gap-8 min-h-0'>
-        <div className='max-w-[1200px] w-full space-y-4 px-4'>
-          {error && <div className='text-red-500'>{error}</div>}
-          <SeriesGrid
-            seriesList={seriesList}
-            loading={loading}
-            title={`検索結果 (${seriesList.length}件)`}
-          />
-        </div>
+      <div className='flex-1 flex flex-col items-center gap-6 min-h-0 mb-10'>
+        <div className='flex items-center w-full max-w-7xl mt-6 px-4'></div>
+        <SeriesGrid
+          seriesList={seriesList}
+          loading={loading}
+          title={`検索結果 (${seriesList.length}件)`}
+        />
+        {error && <div className='text-red-500'>{error}</div>}
       </div>
     </main>
   )
