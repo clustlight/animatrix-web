@@ -1,6 +1,7 @@
 export interface Episode {
   episode_id: string
   title: string
+  description: string
   episode_number: number
   duration: number
   duration_string: string
@@ -34,6 +35,7 @@ export interface Series {
   title: string
   title_yomi: string
   title_en: string
+  description: string
   thumbnail_url: string
   portrait_url: string
   seasons?: Season[]

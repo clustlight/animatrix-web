@@ -191,7 +191,36 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
       window.history.replaceState(newState, '')
     }
   }, [episodeData.episode_id])
+
+  const [editingDesc, setEditingDesc] = useState(false)
+  const [description, setDescription] = useState(episodeData.description ?? '')
+  const [descLoading, setDescLoading] = useState(false)
+
+  useEffect(() => {
+    setDescription(episodeData.description ?? '')
+    setEditingDesc(false)
   }, [episodeData.episode_id])
+
+  const { showToast } = useToast()
+
+  const handleSaveDesc = useCallback(async () => {
+    setDescLoading(true)
+    try {
+      const baseUrl = await getApiBaseUrl()
+      const res = await fetch(`${baseUrl}/v1/episode/${episodeData.episode_id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description: description })
+      })
+      if (!res.ok) throw new Error('保存に失敗しました')
+      setEditingDesc(false)
+      showToast('説明文を更新しました', 'success')
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : '保存に失敗しました', 'error')
+    } finally {
+      setDescLoading(false)
+    }
+  }, [description, episodeData.episode_id])
 
   return (
     <main className='flex flex-col items-center pt-2 pb-4 min-h-screen bg-black'>
@@ -210,6 +239,50 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
               <div className='ml-4 hidden xl:block'>
                 <EpisodeTimestamp timestamp={episodeData.timestamp} />
               </div>
+            </div>
+            <div className='mt-2 text-gray-300 text-sm whitespace-pre-line'>
+              {editingDesc ? (
+                <div className='flex flex-col gap-2'>
+                  <textarea
+                    className='bg-gray-800 text-white px-2 py-1 rounded resize-vertical min-h-[60px]'
+                    value={description}
+                    onChange={e => setDescription(e.target.value)}
+                    disabled={descLoading}
+                  />
+                  <div className='flex gap-2'>
+                    <button
+                      onClick={handleSaveDesc}
+                      disabled={descLoading}
+                      className='px-3 py-1 bg-blue-700 text-white rounded flex items-center gap-1'
+                    >
+                      <MdCheck size={20} />
+                      保存
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEditingDesc(false)
+                        setDescription(episodeData.description ?? '')
+                      }}
+                      disabled={descLoading}
+                      className='px-3 py-1 bg-gray-700 text-white rounded flex items-center gap-1'
+                    >
+                      <MdClose size={20} />
+                      キャンセル
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className='flex items-start gap-2'>
+                  <span>{description}</span>
+                  <button
+                    className='ml-2 text-gray-400 hover:text-blue-500'
+                    title='説明文編集'
+                    onClick={() => setEditingDesc(true)}
+                  >
+                    <MdEdit size={18} />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
           {episodeData.video_url && (
