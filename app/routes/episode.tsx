@@ -184,6 +184,13 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
     // location.state から autoPlay を取得
     const state = window.history.state && window.history.state.usr
     setAutoPlay(state && state.autoPlay === true)
+
+    // 再生フラグを消す（1回だけ有効にする）
+    if (state && state.autoPlay) {
+      const newState = { ...window.history.state, usr: { ...state, autoPlay: false } }
+      window.history.replaceState(newState, '')
+    }
+  }, [episodeData.episode_id])
   }, [episodeData.episode_id])
 
   return (
