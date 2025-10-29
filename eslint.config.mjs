@@ -38,5 +38,6 @@ export default defineConfig([{
         ".react-router/**",
         "eslint.config.mjs",
         "prettier.config.js",
+        "build/**",
     ]
 }]);
