@@ -15,21 +15,30 @@ import { ActionOverlay } from './VIdeoPlayerActionOverlay'
 type VideoPlayerProps = {
   url: string
   onEnded?: () => void
-  autoPlay?: boolean // 追加
+  autoPlay?: boolean
+  initialSeek?: number
+  onTimeUpdate?: (sec: number) => void // ★追加
 }
 
-export default function VideoPlayer({ url, onEnded, autoPlay = false }: VideoPlayerProps) {
+export default function VideoPlayer({
+  url,
+  onEnded,
+  autoPlay = false,
+  initialSeek,
+  onTimeUpdate
+}: VideoPlayerProps) {
   const playerRef = useRef<ReactPlayer>(null as unknown as ReactPlayer)
   const containerRef = useRef<HTMLDivElement>(null)
 
   // State
-  const [playing, setPlaying] = useState(autoPlay) // 初期値を autoPlay に
+  const [playing, setPlaying] = useState(autoPlay)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [volume, setVolume] = usePersistedVolume()
   const [playbackRate, setPlaybackRate] = useState(1.0)
   const [isReady, setIsReady] = useState(false)
   const [aspectRatio, setAspectRatio] = useState<number | null>(null)
+  const [hasSeeked, setHasSeeked] = useState(false)
 
   // UI state
   const [actionIcon, setActionIcon] = useState<ReactNode | null>(null)
@@ -156,6 +165,26 @@ export default function VideoPlayer({ url, onEnded, autoPlay = false }: VideoPla
   useEffect(() => {
     setPlaying(autoPlay)
   }, [autoPlay, url])
+
+  useEffect(() => {
+    setHasSeeked(false)
+  }, [url, initialSeek])
+
+  useEffect(() => {
+    if (isReady && initialSeek != null && !hasSeeked) {
+      playerRef.current?.seekTo(initialSeek, 'seconds')
+      setHasSeeked(true)
+    }
+  }, [isReady, initialSeek, hasSeeked])
+
+  useEffect(() => {
+    if (!onTimeUpdate) return
+    const interval = setInterval(() => {
+      const sec = playerRef.current?.getCurrentTime?.() ?? 0
+      onTimeUpdate(sec)
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [onTimeUpdate])
 
   // --- Render ---
   return (

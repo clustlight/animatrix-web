@@ -1,12 +1,13 @@
 import type { Episode, Season, Series } from '../types'
 import type { Route } from './+types/episode'
 import { useState, useCallback, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { Link, useNavigate, useLocation } from 'react-router'
 import VideoPlayer from '~/components/player/VideoPlayer'
 import { getApiBaseUrl } from '../lib/config'
 import { EpisodeTimestamp, EpisodeList, SeasonTabs } from '~/components/Episode'
-import { MdEdit, MdCheck, MdClose, MdDownload } from 'react-icons/md'
+import { MdEdit, MdCheck, MdClose, MdDownload, MdShare } from 'react-icons/md'
 import { useToast } from '../components/ToastProvider'
+import { ShareDialog } from '~/components/ShareDialog'
 
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url, { headers: { 'Content-Type': 'application/json' } })
@@ -115,6 +116,28 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
 
   const { seriesData, seasonData, episodeData } = loaderData
 
+  // --- クエリパラメータt= をパースして初期シーク位置を渡す ---
+  const location = useLocation()
+  const [initialSeek, setInitialSeek] = useState<number | null>(null)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const t = params.get('t')
+    if (!t) {
+      setInitialSeek(null)
+      return
+    }
+    let seconds = 0
+    const match = t.match(/^(?:(\d+)m)?(\d+)?s?$/)
+    if (match) {
+      const min = match[1] ? parseInt(match[1], 10) : 0
+      const sec = match[2] ? parseInt(match[2], 10) : 0
+      seconds = min * 60 + sec
+    } else if (!isNaN(Number(t))) {
+      seconds = Number(t)
+    }
+    setInitialSeek(seconds)
+  }, [location.search, episodeData.episode_id])
+
   const [selectedSeasonId, setSelectedSeasonId] = useState<string>(seasonData.season_id)
   const [episodeList, setEpisodeList] = useState<Episode[]>(seasonData.episodes || [])
   const [seasonList, setSeasonList] = useState<Season[]>(seriesData.seasons || [])
@@ -222,6 +245,27 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
     }
   }, [description, episodeData.episode_id])
 
+  // --- 共有リンクダイアログ用state ---
+  const [shareOpen, setShareOpen] = useState(false)
+  const [shareIncludeTime, setShareIncludeTime] = useState(true)
+  const [currentTime, setCurrentTime] = useState(0)
+
+  // VideoPlayerの再生位置を取得するためのコールバック
+  const handleTimeUpdate = useCallback((sec: number) => {
+    setCurrentTime(sec)
+  }, [])
+
+  // 共有リンク生成
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''
+  const episodeUrl = `/episode/${episodeData.episode_id}`
+  let shareUrl = baseUrl + episodeUrl
+  if (shareIncludeTime && currentTime > 0) {
+    // t=1m30s形式で
+    const min = Math.floor(currentTime / 60)
+    const sec = Math.floor(currentTime % 60)
+    shareUrl += `?t=${min > 0 ? `${min}m` : ''}${sec}s`
+  }
+
   return (
     <main className='flex flex-col items-center pt-2 pb-4 min-h-screen bg-black'>
       <title>{pageTitle}</title>
@@ -236,8 +280,39 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
               <div className='flex items-center text-xl sm:text-2xl font-bold mt-0.5 mb-2'>
                 {episodeData.title}
               </div>
-              <div className='ml-4 hidden xl:block'>
-                <EpisodeTimestamp timestamp={episodeData.timestamp} />
+              <div className='flex flex-col items-end gap-1 ml-4 hidden xl:flex'>
+                <div className='flex items-center gap-2'>
+                  <button
+                    onClick={download}
+                    disabled={progress !== null}
+                    className='flex items-center gap-1 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-semibold cursor-pointer'
+                    style={{ pointerEvents: progress !== null ? 'none' : 'auto' }}
+                    title='ダウンロード'
+                  >
+                    <MdDownload size={18} />
+                  </button>
+                  <button
+                    className='flex items-center gap-1 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-semibold cursor-pointer'
+                    onClick={() => setShareOpen(true)}
+                    title='共有'
+                  >
+                    <MdShare size={18} />
+                  </button>
+                  <span className='w-2' />
+                  <EpisodeTimestamp timestamp={episodeData.timestamp} />
+                </div>
+                {progress !== null && (
+                  <div className='w-44 flex flex-col justify-center'>
+                    <div className='bg-gray-200 rounded-full h-2.5'>
+                      <div
+                        className='bg-blue-600 h-2.5 rounded-full transition-all'
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                    <div className='text-center text-xs mt-0.5'>{progress}%</div>
+                  </div>
+                )}
+                {error && <div className='text-red-500'>{error}</div>}
               </div>
             </div>
             <div className='mt-2 text-gray-300 text-sm whitespace-pre-line'>
@@ -292,33 +367,11 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
                 url={episodeData.video_url}
                 onEnded={handleVideoEnded}
                 autoPlay={autoPlay}
+                initialSeek={initialSeek ?? undefined}
+                onTimeUpdate={handleTimeUpdate}
               />
             </div>
           )}
-          <div className='flex flex-col sm:flex-row items-start mt-2 gap-4'>
-            <button
-              onClick={download}
-              disabled={progress !== null}
-              className='ml-0 cursor-pointer transition-colors bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded shadow'
-              style={{ pointerEvents: progress !== null ? 'none' : 'auto' }}
-            >
-              <MdDownload size={22} />
-            </button>
-            <div className='flex flex-col items-start gap-1 min-w-[180px] self-center'>
-              {progress !== null && (
-                <div className='w-44 flex flex-col justify-center mt-2'>
-                  <div className='bg-gray-200 rounded-full h-2.5'>
-                    <div
-                      className='bg-blue-600 h-2.5 rounded-full transition-all'
-                      style={{ width: `${progress}%` }}
-                    />
-                  </div>
-                  <div className='text-center text-xs mt-0.5'>{progress}%</div>
-                </div>
-              )}
-              {error && <div className='text-red-500'>{error}</div>}
-            </div>
-          </div>
         </div>
         <div className='flex flex-col min-w-0 max-w-md md:w-2/3 w-full'>
           <SeasonTabs
@@ -329,6 +382,14 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
           <EpisodeList episodeList={episodeList} episodeData={episodeData} />
         </div>
       </div>
+      <ShareDialog
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        url={shareUrl}
+        onCopy={() => showToast('リンクをコピーしました', 'success')}
+        includeTime={shareIncludeTime}
+        setIncludeTime={setShareIncludeTime}
+      />
     </main>
   )
 }
