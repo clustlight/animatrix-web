@@ -81,10 +81,7 @@ export default function SeriesList({
         if (entries[0].isIntersecting && !loading) {
           if (displayedSeries.length < allSeries.length) {
             setLoading(true)
-            setTimeout(() => {
-              setPage(p => p + 1)
-              setLoading(false)
-            }, 300)
+            setPage(p => p + 1)
           }
         }
       },
@@ -93,6 +90,10 @@ export default function SeriesList({
     observer.observe(loaderRef.current)
     return () => observer.disconnect()
   }, [displayedSeries.length, allSeries.length, loading])
+
+  useEffect(() => {
+    setLoading(false)
+  }, [page])
 
   if (error) {
     return (
