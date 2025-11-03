@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Series } from '../types'
 import { getApiBaseUrl } from '../lib/config'
 import { SeriesGrid } from '../components/SeriesGrid'
 import { MdArrowUpward, MdArrowDownward } from 'react-icons/md'
+
+const PAGE_SIZE = 30
 
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url, { headers: { 'Content-Type': 'application/json' } })
@@ -43,24 +45,54 @@ export default function SeriesList({
 }: {
   loaderData?: { seriesList?: Series[]; error?: string }
 }) {
-  const [seriesList, setSeriesList] = useState<Series[]>(loaderData?.seriesList || [])
+  const [allSeries, setAllSeries] = useState<Series[]>(loaderData?.seriesList || [])
+  const [displayedSeries, setDisplayedSeries] = useState<Series[]>([])
   const [error, setError] = useState<string | null>(loaderData?.error || null)
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+  const [page, setPage] = useState(1)
+  const [loading, setLoading] = useState(false)
+  const loaderRef = useRef<HTMLDivElement | null>(null)
 
   const pageTitle = `Series List | animatrix`
 
   useEffect(() => {
     if (!loaderData) {
       clientLoader().then(data => {
-        if ('seriesList' in data && data.seriesList !== undefined) setSeriesList(data.seriesList)
+        if ('seriesList' in data && data.seriesList !== undefined) setAllSeries(data.seriesList)
         if ('error' in data && data.error !== undefined) setError(data.error)
       })
     }
   }, [loaderData])
 
-  const sortedSeriesList = [...seriesList].sort((a, b) =>
-    sortOrder === 'asc' ? a.title.localeCompare(b.title) : b.title.localeCompare(a.title)
-  )
+  useEffect(() => {
+    setDisplayedSeries(
+      [...allSeries]
+        .sort((a, b) =>
+          sortOrder === 'asc' ? a.title.localeCompare(b.title) : b.title.localeCompare(a.title)
+        )
+        .slice(0, page * PAGE_SIZE)
+    )
+  }, [allSeries, sortOrder, page])
+
+  useEffect(() => {
+    if (!loaderRef.current) return
+    const observer = new window.IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && !loading) {
+          if (displayedSeries.length < allSeries.length) {
+            setLoading(true)
+            setTimeout(() => {
+              setPage(p => p + 1)
+              setLoading(false)
+            }, 300)
+          }
+        }
+      },
+      { threshold: 1 }
+    )
+    observer.observe(loaderRef.current)
+    return () => observer.disconnect()
+  }, [displayedSeries.length, allSeries.length, loading])
 
   if (error) {
     return (
@@ -78,14 +110,19 @@ export default function SeriesList({
         <div className='flex items-center w-full max-w-7xl mt-6 px-4'>
           <h1 className='text-2xl font-bold flex items-center gap-4 flex-1 justify-start'>
             Series List
-            <span className='text-base font-normal text-gray-300'>({sortedSeriesList.length})</span>
+            <span className='text-base font-normal text-gray-300'>({allSeries.length})</span>
           </h1>
           <SortToggleButton
             sortOrder={sortOrder}
             onToggle={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
           />
         </div>
-        <SeriesGrid seriesList={sortedSeriesList} loading={seriesList.length === 0} />
+        <SeriesGrid seriesList={displayedSeries} loading={allSeries.length === 0} />
+        <div ref={loaderRef} style={{ height: 40 }} />
+        {loading && <div className='text-gray-500 mb-4'>Loading...</div>}
+        {displayedSeries.length >= allSeries.length && (
+          <div className='text-gray-400 mb-4'>List End</div>
+        )}
       </div>
     </main>
   )
