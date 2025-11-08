@@ -1,6 +1,6 @@
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
-import { useCallback, useEffect, useRef, useState, useMemo } from 'react'
+import { useCallback, useEffect, useState, useMemo } from 'react'
 import { useSearchParams } from 'react-router'
 import type { Series } from '../types'
 import type { Route } from './+types/series'
@@ -51,7 +51,6 @@ export default function Series({ loaderData }: Route.ComponentProps) {
   const [seasons, setSeasons] = useState(seriesData.seasons ?? [])
   const [searchParams, setSearchParams] = useSearchParams()
   const seasonParam = searchParams.get('season')
-  const tabListRef = useRef<HTMLDivElement>(null)
 
   const initialSeasonIndex = useMemo(
     () => (seasonParam ? seasons.findIndex(s => s.season_id === seasonParam) : 0),
@@ -81,23 +80,17 @@ export default function Series({ loaderData }: Route.ComponentProps) {
 
   const handleTabClick = useCallback(
     (idx: number, seasonId: string) => {
-      setSearchParams(prev => {
-        const newParams = new URLSearchParams(prev)
-        newParams.set('season', seasonId)
-        return newParams
-      })
+      setSearchParams(
+        prev => {
+          const newParams = new URLSearchParams(prev)
+          newParams.set('season', seasonId)
+          return newParams
+        },
+        { replace: true }
+      )
     },
     [setSearchParams]
   )
-
-  const scrollTabs = useCallback((dir: 'left' | 'right') => {
-    if (tabListRef.current) {
-      tabListRef.current.scrollBy({
-        left: dir === 'left' ? -120 : 120,
-        behavior: 'smooth'
-      })
-    }
-  }, [])
 
   const handleTitleSave = useCallback(async () => {
     setEditLoading(true)
@@ -251,11 +244,17 @@ export default function Series({ loaderData }: Route.ComponentProps) {
                 seasons={seasons}
                 activeSeason={activeSeason}
                 onTabClick={handleTabClick}
-                tabListRef={tabListRef}
-                scrollTabs={scrollTabs}
                 setEditSeasonId={setEditSeasonId}
                 setEditSeasonTitle={setEditSeasonTitle}
                 setEditSeasonModalOpen={setEditSeasonModalOpen}
+                portraitUrl={
+                  seasons[activeSeason]
+                    ? seriesData.portrait_url.replace(
+                        /\/([^/]+)\/portrait\.png$/,
+                        `/${seasons[activeSeason].season_id.replace(/_[^_]+$/, '')}/portrait.png`
+                      )
+                    : seriesData.portrait_url
+                }
               />
             </div>
             <button
