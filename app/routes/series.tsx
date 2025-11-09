@@ -227,6 +227,8 @@ export default function Series({ loaderData }: Route.ComponentProps) {
           totalEpisodes={totalEpisodes}
           onDeleteClick={() => setDeleteDialogOpen(true)}
           deleteLoading={deleteLoading}
+          onMoveClick={() => handleMoveClick(seasons[activeSeason]?.season_id)}
+          moveLoading={moveLoading}
           portraitUrl={
             seasons[activeSeason]
               ? seriesData.portrait_url.replace(
@@ -257,15 +259,6 @@ export default function Series({ loaderData }: Route.ComponentProps) {
                 }
               />
             </div>
-            <button
-              className='flex items-center justify-center w-10 h-10 ml-2 bg-blue-700 hover:bg-blue-800 text-white rounded-full shadow transition-colors cursor-pointer'
-              onClick={() => handleMoveClick(seasons[activeSeason]?.season_id)}
-              disabled={moveLoading}
-              type='button'
-              style={{ alignSelf: 'flex-start' }}
-            >
-              <MdSwapHoriz size={24} />
-            </button>
           </div>
           <MoveSeasonModal
             open={moveModalOpen}

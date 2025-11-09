@@ -1,5 +1,4 @@
-import React from 'react'
-import { MdEdit, MdCheck, MdClose, MdDelete } from 'react-icons/md'
+import { MdEdit, MdCheck, MdClose, MdDelete, MdSwapHoriz } from 'react-icons/md'
 import { PortraitImage } from '~/components/PortraitImage'
 
 type SeriesHeaderProps = {
@@ -13,6 +12,8 @@ type SeriesHeaderProps = {
   totalEpisodes: number
   onDeleteClick: () => void
   deleteLoading: boolean
+  onMoveClick: () => void
+  moveLoading: boolean
   portraitUrl: string
   originalTitle: string
 }
@@ -28,6 +29,8 @@ export function SeriesHeader({
   totalEpisodes,
   onDeleteClick,
   deleteLoading,
+  onMoveClick,
+  moveLoading,
   portraitUrl,
   originalTitle
 }: SeriesHeaderProps) {
@@ -93,13 +96,24 @@ export function SeriesHeader({
         <div className='text-gray-400 text-sm mt-1'>
           {`シーズン数: ${totalSeasons}　全${totalEpisodes}話`}
         </div>
-        <button
-          className='mt-4 px-3 py-1 bg-red-700 text-white rounded flex items-center gap-2 cursor-pointer'
-          onClick={onDeleteClick}
-          disabled={deleteLoading}
-        >
-          <MdDelete size={20} />
-        </button>
+        <div className='mt-4 flex gap-2'>
+          <button
+            className='px-3 py-1 bg-blue-700 hover:bg-blue-800 text-white rounded flex items-center gap-2 cursor-pointer transition-colors disabled:opacity-60'
+            onClick={onMoveClick}
+            disabled={moveLoading}
+            type='button'
+          >
+            <MdSwapHoriz size={20} />
+          </button>
+          <button
+            className='px-3 py-1 bg-red-700 hover:bg-red-800 text-white rounded flex items-center gap-2 cursor-pointer transition-colors disabled:opacity-60'
+            onClick={onDeleteClick}
+            disabled={deleteLoading}
+            type='button'
+          >
+            <MdDelete size={20} />
+          </button>
+        </div>
       </div>
     </div>
   )
