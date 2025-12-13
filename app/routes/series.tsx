@@ -16,7 +16,6 @@ import { useToast } from '../components/ToastProvider'
 import { SeasonTabs } from '../components/SeasonTabs'
 import { DeleteDialog } from '../components/DeleteDialog'
 import { SeriesHeader } from '../components/SeriesHeader'
-import { MdSwapHoriz } from 'react-icons/md'
 
 dayjs.extend(relativeTime)
 dayjs.locale('ja')
