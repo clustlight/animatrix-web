@@ -21,6 +21,7 @@ function SeriesGridItem({ series }: { series: Series }) {
           src={series.thumbnail_url}
           alt={series.title}
           className='w-full max-w-[300px] aspect-video object-cover rounded shadow mb-2 transition-all'
+          loading='eager'
           onError={() => setImgError(true)}
         />
       )}
