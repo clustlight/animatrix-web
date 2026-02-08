@@ -17,7 +17,7 @@ type VideoPlayerProps = {
   onEnded?: () => void
   autoPlay?: boolean
   initialSeek?: number
-  onTimeUpdate?: (sec: number) => void // ★追加
+  onTimeUpdate?: (sec: number) => void
 }
 
 export default function VideoPlayer({
@@ -45,6 +45,7 @@ export default function VideoPlayer({
   const [actionText, setActionText] = useState<string | null>(null)
   const [showUI, setShowUI] = useState(true)
   const hideUITimer = useRef<NodeJS.Timeout | null>(null)
+  const lastSeekDragEndTime = useRef<number>(0)
 
   // Custom hooks
   const { isFullscreen, toggleFullscreen } = useFullscreen(
@@ -80,6 +81,7 @@ export default function VideoPlayer({
 
   // Toggle play/pause on player click (except controls)
   const handlePlayerClick = (e: MouseEvent) => {
+    if (Date.now() - lastSeekDragEndTime.current < 50) return
     const controls = containerRef.current?.querySelector('[data-player-controls]')
     if (controls && controls.contains(e.target as Node)) return
     setPlaying(p => !p)
@@ -99,7 +101,6 @@ export default function VideoPlayer({
   }
 
   // --- Cursor & UI fade logic ---
-  const lastMouseMoveTime = useRef<number>(Date.now())
   const [mouseMoved, setMouseMoved] = useState(true)
 
   // Hide action overlay after delay
@@ -128,7 +129,6 @@ export default function VideoPlayer({
     const el = containerRef.current
     if (!el) return
     const handleMouseMove = () => {
-      lastMouseMoveTime.current = Date.now()
       setMouseMoved(true)
       setHovered(true)
     }
@@ -148,7 +148,7 @@ export default function VideoPlayer({
   // UI visibility condition
   const isUIVisible = isFullscreen ? hovered && !fadeOut : hovered || !playing
 
-  // 動画のアスペクト比を取得
+  // Get the video aspect ratio
   const handleReady = useCallback(() => {
     setIsReady(true)
     const video = playerRef.current?.getInternalPlayer() as HTMLVideoElement | null
@@ -157,7 +157,7 @@ export default function VideoPlayer({
     }
   }, [])
 
-  // 動画終了時コールバック
+  // Callback on video end
   const handleEnded = () => {
     if (onEnded) onEnded()
   }
@@ -232,7 +232,7 @@ export default function VideoPlayer({
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
         onReady={handleReady}
-        onEnded={handleEnded} // 追加
+        onEnded={handleEnded} // Added
         style={{ position: 'absolute', inset: 0 }}
       />
       {/* Action overlay */}
@@ -243,6 +243,9 @@ export default function VideoPlayer({
           playing={playing}
           onPlayPause={handlePlayPause}
           onSeek={handleSeek}
+          onSeekBarDrag={dragging => {
+            if (!dragging) lastSeekDragEndTime.current = Date.now()
+          }}
           onFullscreen={toggleFullscreen}
           currentTime={currentTime}
           duration={duration}

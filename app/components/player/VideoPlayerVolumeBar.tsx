@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react'
+import React, { useRef, useEffect, useCallback } from 'react'
 
 type VideoPlayerVolumeBarProps = {
   volume: number
@@ -29,28 +29,94 @@ export default function VideoPlayerVolumeBar({
     return () => el.removeEventListener('wheel', handleWheel)
   }, [volume, onVolumeChange])
 
-  const handleDrag = (dragging: boolean) => onDrag?.(dragging)
+  const clamp = (val: number, min: number, max: number) => Math.max(min, Math.min(max, val))
+
+  const updateVolumeFromClientX = useCallback(
+    (clientX: number) => {
+      const bar = barRef.current
+      if (!bar) return
+      const rect = bar.getBoundingClientRect()
+      const ratio = rect.width > 0 ? clamp((clientX - rect.left) / rect.width, 0, 1) : 0
+      onVolumeChange(Number(ratio.toFixed(2)))
+    },
+    [onVolumeChange]
+  )
+
+  const handleDragEnd = useCallback(() => {
+    onDrag?.(false)
+  }, [onDrag])
+
+  const attachDragListeners = useCallback(() => {
+    const handleMouseMove = (e: MouseEvent) => updateVolumeFromClientX(e.clientX)
+    const handleMouseUp = () => {
+      handleDragEnd()
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+    }
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length > 0) updateVolumeFromClientX(e.touches[0].clientX)
+      e.preventDefault()
+    }
+    const handleTouchEnd = () => {
+      handleDragEnd()
+      window.removeEventListener('touchmove', handleTouchMove)
+      window.removeEventListener('touchend', handleTouchEnd)
+      window.removeEventListener('touchcancel', handleTouchEnd)
+    }
+
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
+    window.addEventListener('touchmove', handleTouchMove, { passive: false })
+    window.addEventListener('touchend', handleTouchEnd)
+    window.addEventListener('touchcancel', handleTouchEnd)
+  }, [updateVolumeFromClientX, handleDragEnd])
+
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      e.preventDefault()
+      onDrag?.(true)
+      updateVolumeFromClientX(e.clientX)
+      attachDragListeners()
+    },
+    [attachDragListeners, onDrag, updateVolumeFromClientX]
+  )
+
+  const handleTouchStart = useCallback(
+    (e: React.TouchEvent<HTMLDivElement>) => {
+      if (e.touches.length === 0) return
+      onDrag?.(true)
+      updateVolumeFromClientX(e.touches[0].clientX)
+      attachDragListeners()
+      e.preventDefault()
+    },
+    [attachDragListeners, onDrag, updateVolumeFromClientX]
+  )
+
+  const progressPercent = clamp(volume * 100, 0, 100)
 
   return (
-    <div
-      ref={barRef}
-      className='flex items-center gap-2'
-      style={{ minHeight: 32, alignItems: 'center' }}
-    >
-      <input
+    <div className='flex items-center gap-2' style={{ minHeight: 32, alignItems: 'center' }}>
+      <div
+        ref={barRef}
         tabIndex={-1}
-        type='range'
-        min={0}
-        max={1}
-        step={0.01}
-        value={volume}
-        onChange={e => onVolumeChange(Number(e.target.value))}
-        className='w-32 h-1.5 accent-orange-500 cursor-pointer'
-        onMouseDown={() => handleDrag(true)}
-        onMouseUp={() => handleDrag(false)}
-        onTouchStart={() => handleDrag(true)}
-        onTouchEnd={() => handleDrag(false)}
-      />
+        role='slider'
+        aria-valuemin={0}
+        aria-valuemax={1}
+        aria-valuenow={volume}
+        className='relative w-32 h-1.5 rounded-xl cursor-pointer hover:h-2 transition-all duration-150 bg-white/30'
+        onMouseDown={handleMouseDown}
+        onTouchStart={handleTouchStart}
+      >
+        <div
+          className='absolute left-0 top-0 h-full rounded-xl bg-orange-500'
+          style={{ width: `${progressPercent}%` }}
+        />
+        <div
+          className='absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-orange-400 shadow pointer-events-none'
+          style={{ left: `calc(${progressPercent}% - 6px)` }}
+        />
+      </div>
     </div>
   )
 }

@@ -5,7 +5,6 @@ import { useEffect, useRef, useState } from 'react'
  */
 export function useFadeUI({ isFullscreen }: { isFullscreen: boolean }) {
   // UI visibility states
-  const [showUI, setShowUI] = useState(true)
   const [fadeOut, setFadeOut] = useState(false)
   const [shortcutActive, setShortcutActive] = useState(false)
   const [hovered, setHovered] = useState(false)
@@ -38,14 +37,12 @@ export function useFadeUI({ isFullscreen }: { isFullscreen: boolean }) {
   // Handle fade out logic
   useEffect(() => {
     if (!isFullscreen && hovered) {
-      setShowUI(true)
       setFadeOut(false)
       clearTimeout(fadeOutTimer.current!)
       fadeOutTimer.current = null
       return
     }
     if (isFullscreen || !hovered) {
-      setShowUI(true)
       setFadeOut(false)
       clearTimeout(fadeOutTimer.current!)
       fadeOutTimer.current = setTimeout(() => {
@@ -63,7 +60,6 @@ export function useFadeUI({ isFullscreen }: { isFullscreen: boolean }) {
   useEffect(() => {
     if (fadeOut) {
       const t = setTimeout(() => {
-        setShowUI(false)
         setFadeOut(false)
       }, 800)
       return () => clearTimeout(t)
@@ -79,7 +75,6 @@ export function useFadeUI({ isFullscreen }: { isFullscreen: boolean }) {
   }, [])
 
   return {
-    showUI,
     fadeOut,
     shortcutActive,
     hovered,

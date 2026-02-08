@@ -200,7 +200,7 @@ const VolumeControl: React.FC<{
           transition-all duration-300
         `}
         style={{
-          left: showBar ? 190 : 50,
+          left: showBar ? 140 : 50,
           minWidth: 32
         }}
       >
@@ -240,16 +240,15 @@ export default function VideoPlayerControls({
     showUI && !fadeOut ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
   ].join(' ')
 
-  // モバイル・タブレット判定
+  // Mobile/tablet detection
   const isMobileOrTablet =
     typeof window !== 'undefined' ? window.matchMedia('(max-width: 1024px)').matches : false
   const isMobile =
     typeof window !== 'undefined' ? window.matchMedia('(max-width: 600px)').matches : false
-  const isTablet = isMobileOrTablet && !isMobile
 
   return (
     <div>
-      {/* Seek bar（全デバイスで表示） */}
+      {/* Seek bar (shown on all devices) */}
       <div
         data-player-controls
         onClick={e => e.stopPropagation()}
@@ -275,7 +274,7 @@ export default function VideoPlayerControls({
         }}
       >
         <div className='flex items-center justify-center w-full'>
-          {/* Left: 現在時間/総時間（全デバイスで表示） */}
+          {/* Left: current/total time (shown on all devices) */}
           <div className='flex items-center gap-1 absolute left-0 pl-4'>
             <span
               className={
@@ -286,7 +285,7 @@ export default function VideoPlayerControls({
             >
               {formatTime(currentTime)} / {formatTime(duration)}
             </span>
-            {/* PCのみボリューム表示 */}
+            {/* Volume shown on desktop only */}
             {!isMobileOrTablet && (
               <VolumeControl
                 volume={volume}
@@ -295,26 +294,10 @@ export default function VideoPlayerControls({
               />
             )}
           </div>
-          {/* Center: 再生/一時停止・スキップ */}
+          {/* Center: play/pause and skips */}
           <div className='flex items-center gap-2 justify-center'>
             {isMobile ? (
               <PlayPauseButton playing={playing} onClick={onPlayPause} />
-            ) : isTablet ? (
-              <>
-                <IconButton label='Back 30s' onClick={() => onSeek(currentTime - 30)}>
-                  <MdReplay30 size={28} />
-                </IconButton>
-                <IconButton label='Back 10s' onClick={() => onSeek(currentTime - 10)}>
-                  <MdReplay10 size={28} />
-                </IconButton>
-                <PlayPauseButton playing={playing} onClick={onPlayPause} />
-                <IconButton label='Forward 10s' onClick={() => onSeek(currentTime + 10)}>
-                  <MdForward10 size={28} />
-                </IconButton>
-                <IconButton label='Forward 30s' onClick={() => onSeek(currentTime + 30)}>
-                  <MdForward30 size={28} />
-                </IconButton>
-              </>
             ) : (
               <>
                 <IconButton label='Back 30s' onClick={() => onSeek(currentTime - 30)}>
@@ -333,7 +316,7 @@ export default function VideoPlayerControls({
               </>
             )}
           </div>
-          {/* Right: 全画面（全デバイス）, 再生速度（PCのみ） */}
+          {/* Right: fullscreen (all devices), playback rate (desktop only) */}
           <div className='flex items-center gap-2 absolute right-0 pr-4'>
             {!isMobileOrTablet && (
               <PlaybackRateControl
