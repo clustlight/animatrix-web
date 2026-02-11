@@ -72,6 +72,91 @@ const scoreTitleMatch = (query: string, title: SyoboiTitleResult) => {
 
 const toNumber = (value?: string) => (value ? Number(value) : 0)
 
+const splitDescriptionSections = (value: string) => {
+  const sections: { title: string | null; body: string[] }[] = []
+  let current: { title: string | null; body: string[] } = { title: null, body: [] }
+  const lines = value.split(/\r?\n/)
+
+  const pushCurrent = () => {
+    if (current.title || current.body.length > 0) {
+      sections.push(current)
+    }
+  }
+
+  for (const rawLine of lines) {
+    const line = rawLine.trimEnd()
+    if (!line) {
+      current.body.push('')
+      continue
+    }
+    if (line.startsWith('*') && !line.startsWith('**')) {
+      pushCurrent()
+      current = { title: line.slice(1).trim() || null, body: [] }
+      continue
+    }
+    current.body.push(line)
+  }
+
+  pushCurrent()
+  return sections
+}
+
+const mergeDescriptions = (baseText: string, appendText: string) => {
+  if (!baseText.trim()) return appendText.trim()
+  if (!appendText.trim()) return baseText.trim()
+
+  const baseSections = splitDescriptionSections(baseText)
+  const appendSections = splitDescriptionSections(appendText)
+  const merged = new Map<string, { title: string | null; body: string[] }>()
+  const order: string[] = []
+
+  const getKey = (title: string | null) => (title ? `title:${title}` : 'title:__untitled')
+
+  const isDedupSection = (title: string | null) =>
+    Boolean(title && (title.includes('スタッフ') || title.includes('キャスト')))
+
+  const addSection = (section: { title: string | null; body: string[] }) => {
+    const key = getKey(section.title)
+    if (!merged.has(key)) {
+      merged.set(key, { title: section.title, body: [...section.body] })
+      order.push(key)
+      return
+    }
+    const target = merged.get(key)
+    if (!target) return
+    if (isDedupSection(target.title)) {
+      const existing = new Set(target.body.map(line => line.trim()))
+      section.body.forEach(line => {
+        const trimmed = line.trim()
+        if (!trimmed || existing.has(trimmed)) return
+        existing.add(trimmed)
+        target.body.push(line)
+      })
+      return
+    }
+    if (target.body.length > 0 && target.body[target.body.length - 1].trim() !== '') {
+      target.body.push('')
+    }
+    target.body.push(...section.body)
+  }
+
+  baseSections.forEach(addSection)
+  appendSections.forEach(addSection)
+
+  return order
+    .map(key => {
+      const section = merged.get(key)
+      if (!section) return ''
+      const lines = [] as string[]
+      if (section.title) lines.push(`*${section.title}`)
+      lines.push(...section.body)
+      return lines.join('\n').trimEnd()
+    })
+    .filter(Boolean)
+    .join('\n\n')
+    .trim()
+}
+
 async function fetchSyoboiJson<T>(url: string): Promise<T> {
   const res = await fetch(url)
   if (!res.ok) throw new Error(`Syoboi API error: ${res.status}`)
@@ -150,6 +235,7 @@ export function EditSeasonModal({
   const [syoboiError, setSyoboiError] = useState<string | null>(null)
   const [syoboiSearched, setSyoboiSearched] = useState(false)
   const [syoboiApplyLoading, setSyoboiApplyLoading] = useState(false)
+  const [syoboiAppendLoading, setSyoboiAppendLoading] = useState(false)
   const [syoboiEpisodeLoading, setSyoboiEpisodeLoading] = useState(false)
   const [syoboiEpisodeProgress, setSyoboiEpisodeProgress] = useState(0)
   const { showToast } = useToast()
@@ -370,6 +456,62 @@ export function EditSeasonModal({
     }
   }, [seasonId, syoboiSelected, onSeasonSynced, showToast])
 
+  const handleSyoboiAppend = useCallback(async () => {
+    if (!syoboiSelected) return
+    setSyoboiAppendLoading(true)
+    setSyoboiError(null)
+    try {
+      const detailUrl = `https://cal.syoboi.jp/json.php?Req=TitleFull&TID=${syoboiSelected.tid}`
+      const detail = await fetchSyoboi<SyoboiTitleSearchResponse>(detailUrl)
+      const detailItem = detail.Titles?.[String(syoboiSelected.tid)]
+      const appendedDescription = (detailItem?.Comment ?? '').trim()
+
+      const baseUrl = await getApiBaseUrl()
+      const currentRes = await fetch(`${baseUrl}/v1/season/${seasonId}`, {
+        headers: { 'Content-Type': 'application/json' }
+      })
+      if (!currentRes.ok) throw new Error('シーズン取得に失敗しました')
+      const currentSeason = (await currentRes.json()) as Season
+
+      const mergedDescription = mergeDescriptions(
+        currentSeason.description ?? '',
+        appendedDescription
+      )
+
+      const nextEndYear = toNumber(detailItem?.FirstEndYear) || syoboiSelected.firstEndYear || 0
+      const nextEndMonth = toNumber(detailItem?.FirstEndMonth) || syoboiSelected.firstEndMonth || 0
+
+      const payload: { description?: string; first_end_year?: number; first_end_month?: number } = {
+        description: mergedDescription || undefined,
+        first_end_year: nextEndYear || undefined,
+        first_end_month: nextEndMonth || undefined
+      }
+
+      const res = await fetch(`${baseUrl}/v1/season/${seasonId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      if (!res.ok) throw new Error('追記に失敗しました')
+
+      const updated = await fetch(`${baseUrl}/v1/season/${seasonId}`, {
+        headers: { 'Content-Type': 'application/json' }
+      })
+      if (updated.ok) {
+        const updatedSeason = (await updated.json()) as Season
+        onSeasonSynced?.(seasonId, updatedSeason)
+        setTitle(updatedSeason.season_title)
+      }
+      showToast('追記しました', 'success')
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : '追記に失敗しました'
+      setSyoboiError(msg)
+      showToast(msg, 'error')
+    } finally {
+      setSyoboiAppendLoading(false)
+    }
+  }, [seasonId, syoboiSelected, onSeasonSynced, showToast])
+
   if (!open) return null
   return (
     <div
@@ -508,14 +650,24 @@ export function EditSeasonModal({
               ))}
             </ul>
           </div>
-          <button
-            className='px-3 py-1 bg-green-700 hover:bg-green-800 text-white rounded disabled:opacity-60'
-            onClick={handleSyoboiApply}
-            disabled={!syoboiSelected || syoboiApplyLoading}
-            type='button'
-          >
-            {syoboiApplyLoading ? '転写中...' : '選択した内容を転写'}
-          </button>
+          <div className='flex flex-wrap gap-2'>
+            <button
+              className='px-3 py-1 bg-green-700 hover:bg-green-800 text-white rounded disabled:opacity-60'
+              onClick={handleSyoboiApply}
+              disabled={!syoboiSelected || syoboiApplyLoading || syoboiAppendLoading}
+              type='button'
+            >
+              {syoboiApplyLoading ? '転写中...' : '選択した内容を転写'}
+            </button>
+            <button
+              className='px-3 py-1 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded disabled:opacity-60'
+              onClick={handleSyoboiAppend}
+              disabled={!syoboiSelected || syoboiAppendLoading || syoboiApplyLoading}
+              type='button'
+            >
+              {syoboiAppendLoading ? '追記中...' : '内容を追記'}
+            </button>
+          </div>
           <div className='mt-3 flex items-center gap-3'>
             <button
               className='px-3 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded disabled:opacity-60'
