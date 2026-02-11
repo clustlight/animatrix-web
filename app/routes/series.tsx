@@ -219,8 +219,41 @@ export default function Series({ loaderData }: Route.ComponentProps) {
   }, [])
 
   useEffect(() => {
-    setDescriptionOpen(true)
+    const isPortrait =
+      typeof window !== 'undefined' &&
+      (window.matchMedia
+        ? window.matchMedia('(orientation: portrait)').matches
+        : window.innerHeight > window.innerWidth)
+    // On portrait (vertical) hide the description pane by default
+    setDescriptionOpen(!isPortrait)
   }, [activeSeasonData?.season_id])
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return
+    const mq = window.matchMedia('(orientation: portrait)')
+    const onChange = (e: MediaQueryListEvent) => {
+      // When portrait (e.matches === true) hide description
+      setDescriptionOpen(!e.matches)
+    }
+    if (mq.addEventListener) {
+      mq.addEventListener('change', onChange)
+    } else {
+      const mqLegacy = mq as MediaQueryList & {
+        addListener?: (listener: (e: MediaQueryListEvent) => void) => void
+      }
+      mqLegacy.addListener?.(onChange)
+    }
+    return () => {
+      if (mq.removeEventListener) {
+        mq.removeEventListener('change', onChange)
+      } else {
+        const mqLegacy = mq as MediaQueryList & {
+          removeListener?: (listener: (e: MediaQueryListEvent) => void) => void
+        }
+        mqLegacy.removeListener?.(onChange)
+      }
+    }
+  }, [])
 
   const handleTabClick = useCallback(
     (idx: number, seasonId: string) => {
@@ -405,8 +438,8 @@ export default function Series({ loaderData }: Route.ComponentProps) {
       <title>{pageTitle}</title>
       <div className='flex-1 flex flex-col items-center min-h-0'>
         <div className='w-full max-w-none px-4 sm:px-6 lg:px-12 xl:px-16 h-[calc(100vh-7rem)] overflow-hidden'>
-          <div className='grid h-full gap-5 lg:gap-10 lg:grid-cols-[1.2fr_0.8fr] overflow-y-auto lg:overflow-hidden'>
-            <div className='flex flex-col gap-4 lg:overflow-y-auto lg:pr-6'>
+          <div className='grid h-full gap-5 md:gap-8 lg:gap-10 lg:grid-cols-[0.9fr_1.1fr] overflow-y-auto'>
+            <div className='flex flex-col gap-4 lg:overflow-y-auto lg:pr-6 min-w-0'>
               <SeriesHeader
                 editing={editing}
                 title={title}
@@ -486,7 +519,7 @@ export default function Series({ loaderData }: Route.ComponentProps) {
                   {activeSeasonData.description && descriptionOpen && (
                     <div className='mt-3 text-muted-foreground'>
                       {hasStructuredDescription ? (
-                        <div className='grid gap-3 md:grid-cols-2'>
+                        <div className='grid gap-3'>
                           {descriptionSections.map((section, index) => (
                             <section
                               key={`${section.title ?? 'section'}-${index}`}
@@ -572,8 +605,8 @@ export default function Series({ loaderData }: Route.ComponentProps) {
                 </div>
               )}
             </div>
-            <div className='flex flex-col min-h-0 mt-6 lg:mt-0 lg:pl-6'>
-              <div className='w-full max-w-lg'>
+            <div className='flex flex-col min-h-0 mt-6 md:mt-0 md:pl-6 min-w-0'>
+              <div className='w-full'>
                 <div className='flex items-center justify-between pb-3 mb-3 border-b border-border'>
                   <div className='text-sm uppercase tracking-[0.25em] text-muted-foreground'>
                     Episodes
@@ -583,7 +616,7 @@ export default function Series({ loaderData }: Route.ComponentProps) {
                   </div>
                 </div>
               </div>
-              <div className='w-full max-w-lg lg:h-full lg:overflow-y-auto pr-2'>
+              <div className='w-full lg:h-full lg:overflow-y-auto pr-2 min-w-0s'>
                 <EpisodeList episodes={seasons[activeSeason]?.episodes ?? []} />
               </div>
             </div>

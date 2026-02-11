@@ -53,17 +53,30 @@ export function Layout({ children }: { children: React.ReactNode }) {
 export default function App() {
   const [searchParams, setSearchParams] = React.useState('')
   const navigate = useNavigate()
-  const [theme, setTheme] = React.useState<'light' | 'dark'>('dark')
-  const [hasUserTheme, setHasUserTheme] = React.useState(false)
-
-  React.useEffect(() => {
-    if (typeof window === 'undefined') return
-    const storedTheme = window.localStorage.getItem('theme')
-    if (storedTheme === 'light' || storedTheme === 'dark') {
-      setTheme(storedTheme)
-      setHasUserTheme(true)
+  const [theme, setTheme] = React.useState<'light' | 'dark'>(() => {
+    if (typeof window === 'undefined') return 'dark'
+    try {
+      const stored = window.localStorage.getItem('theme')
+      if (stored === 'light' || stored === 'dark') return stored
+    } catch {
+      // ignore
     }
-  }, [])
+    try {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+    } catch {
+      return 'dark'
+    }
+  })
+
+  const [hasUserTheme, setHasUserTheme] = React.useState(() => {
+    if (typeof window === 'undefined') return false
+    try {
+      const stored = window.localStorage.getItem('theme')
+      return stored === 'light' || stored === 'dark'
+    } catch {
+      return false
+    }
+  })
 
   React.useEffect(() => {
     if (typeof window === 'undefined') return
@@ -163,8 +176,16 @@ export default function App() {
           type='button'
           className='text-foreground hover:text-primary border border-border bg-card/70 hover:bg-card transition-colors px-3 py-1 rounded text-sm h-full'
           onClick={() => {
+            const newTheme = theme === 'dark' ? 'light' : 'dark'
             setHasUserTheme(true)
-            setTheme(theme === 'dark' ? 'light' : 'dark')
+            setTheme(newTheme)
+            if (typeof window !== 'undefined') {
+              try {
+                window.localStorage.setItem('theme', newTheme)
+              } catch {
+                // ignore localStorage errors (e.g. private mode)
+              }
+            }
           }}
           aria-label='Toggle light and dark theme'
         >
