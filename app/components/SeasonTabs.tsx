@@ -1,6 +1,6 @@
 import type { Season } from '../types'
-import { MdEdit, MdChevronLeft, MdChevronRight } from 'react-icons/md'
-import { useEffect, useRef, useState } from 'react'
+import { MdEdit } from 'react-icons/md'
+import { useEffect, useState } from 'react'
 
 type SeasonTabsProps = {
   seasons: Season[]
@@ -9,12 +9,7 @@ type SeasonTabsProps = {
   setEditSeasonId: (id: string) => void
   setEditSeasonTitle: (title: string) => void
   setEditSeasonModalOpen: (open: boolean) => void
-  portraitUrl: string
-}
-
-function getSeasonPortraitUrl(seriesPortraitUrl: string, seasonId: string) {
-  const seasonPrefix = seasonId.replace(/_[^_]+$/, '')
-  return seriesPortraitUrl.replace(/\/([^/]+)\/portrait\.png$/, `/${seasonPrefix}/portrait.png`)
+  seriesPortraitUrl: string
 }
 
 export function SeasonTabs({
@@ -24,10 +19,17 @@ export function SeasonTabs({
   setEditSeasonId,
   setEditSeasonTitle,
   setEditSeasonModalOpen,
-  portraitUrl
+  seriesPortraitUrl
 }: SeasonTabsProps) {
   const [isMobile, setIsMobile] = useState(false)
-  const scrollRef = useRef<HTMLDivElement>(null)
+
+  const buildPortraitUrl = (inputUrl: string) => {
+    if (!inputUrl) return inputUrl
+    if (inputUrl.includes('%2F')) {
+      return inputUrl.replace(/%2F[^%/]+$/, '%2Fportrait.png')
+    }
+    return inputUrl.replace(/\/[^/]+$/, '/portrait.png')
+  }
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 600)
@@ -36,21 +38,12 @@ export function SeasonTabs({
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  const scroll = (dir: 'left' | 'right') => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollBy({
-        left: dir === 'left' ? -120 : 120,
-        behavior: 'smooth'
-      })
-    }
-  }
-
   if (isMobile) {
     return (
-      <div className='flex flex-col gap-2 mb-6 items-center w-full'>
-        <div className='flex w-full max-w-[220px]'>
+      <div className='flex flex-col gap-2 mb-4 w-full'>
+        <div className='flex flex-col gap-2 w-full'>
           <select
-            className='flex-1 px-2 py-2 rounded font-semibold text-base bg-gray-200 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400'
+            className='w-full px-3 py-2 rounded font-semibold text-base bg-card text-card-foreground border border-border focus:outline-none focus:ring-2 focus:ring-ring/60'
             value={seasons[activeSeason]?.season_id}
             onChange={e => {
               const idx = seasons.findIndex(s => s.season_id === e.target.value)
@@ -64,7 +57,7 @@ export function SeasonTabs({
             ))}
           </select>
           <button
-            className='ml-2 text-gray-400 hover:text-blue-500 flex items-center'
+            className='inline-flex items-center justify-center gap-2 px-3 py-2 rounded bg-secondary/70 text-secondary-foreground hover:bg-secondary transition-colors text-sm'
             title='シーズン名編集'
             onClick={() => {
               setEditSeasonId(seasons[activeSeason]?.season_id)
@@ -73,7 +66,8 @@ export function SeasonTabs({
             }}
             type='button'
           >
-            <MdEdit size={18} />
+            <MdEdit size={16} />
+            編集
           </button>
         </div>
       </div>
@@ -81,86 +75,50 @@ export function SeasonTabs({
   }
 
   return (
-    <div className='flex items-center gap-2 mb-6 w-full justify-center'>
-      <button
-        className='p-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center cursor-pointer'
-        onClick={() => scroll('left')}
-        type='button'
-      >
-        <MdChevronLeft size={28} />
-      </button>
-      <div
-        ref={scrollRef}
-        className='flex gap-3 overflow-x-auto px-2'
-        style={{
-          scrollBehavior: 'smooth',
-          maxWidth: '600px',
-          msOverflowStyle: 'none',
-          scrollbarWidth: 'none'
-        }}
-      >
-        <style>
-          {`
-            div[ref]::-webkit-scrollbar {
-              display: none;
-            }
-          `}
-        </style>
+    <div className='w-full'>
+      <div className='flex items-center justify-between mb-2'>
+        <div className='text-xs uppercase tracking-[0.2em] text-muted-foreground'>Seasons</div>
+        <button
+          className='text-muted-foreground hover:text-foreground flex items-center text-xs cursor-pointer'
+          title='シーズン名編集'
+          onClick={() => {
+            setEditSeasonId(seasons[activeSeason]?.season_id)
+            setEditSeasonTitle(seasons[activeSeason]?.season_title)
+            setEditSeasonModalOpen(true)
+          }}
+          type='button'
+          aria-label='シーズン名編集'
+        >
+          <MdEdit size={16} />
+        </button>
+      </div>
+      <div className='flex gap-3 overflow-x-auto pb-1'>
         {seasons.map((season, idx) => {
-          const seasonPortraitUrl = getSeasonPortraitUrl(portraitUrl, season.season_id)
+          const seasonBaseUrl = season.thumbnail_url || seriesPortraitUrl
+          const seasonThumbnailUrl = buildPortraitUrl(seasonBaseUrl)
+          const isActive = idx === activeSeason
           return (
-            <div key={season.season_id} className='flex flex-col items-center'>
-              <div className='relative'>
-                <button
-                  className={`px-2 py-1 rounded font-semibold flex flex-col items-center gap-1 cursor-pointer relative ${
-                    idx === activeSeason
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                  }`}
-                  onClick={() => onTabClick(idx, season.season_id)}
-                  title={season.season_title}
-                  type='button'
-                  style={{ minWidth: '5rem', maxWidth: '10rem' }}
-                >
-                  <img
-                    src={seasonPortraitUrl}
-                    alt={season.season_title}
-                    className='w-20 h-28 object-cover rounded blur-xs'
-                    style={{ minWidth: '5rem', minHeight: '7rem' }}
-                  />
-                  <span
-                    className='absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white text-xs font-bold max-w-[7rem] text-center pointer-events-none'
-                    style={{
-                      textShadow: '0 0 32px #000, 0 0 24px #000, 0 2px 12px #000, 0 0 2px #000'
-                    }}
-                  >
-                    {season.season_title}
-                  </span>
-                </button>
-              </div>
-              <button
-                className='mt-1 text-blue-400 hover:text-blue-600 flex items-center cursor-pointer'
-                title='シーズン名編集'
-                onClick={() => {
-                  setEditSeasonId(season.season_id)
-                  setEditSeasonTitle(season.season_title)
-                  setEditSeasonModalOpen(true)
-                }}
-                type='button'
-              >
-                <MdEdit size={15} />
-              </button>
-            </div>
+            <button
+              key={season.season_id}
+              className={`flex items-center gap-3 px-3 py-2 rounded-lg border text-sm cursor-pointer min-w-[180px] transition-colors ${
+                isActive
+                  ? 'bg-accent text-accent-foreground border-border shadow-sm'
+                  : 'bg-card/60 text-muted-foreground border-border hover:bg-card'
+              }`}
+              onClick={() => onTabClick(idx, season.season_id)}
+              title={season.season_title}
+              type='button'
+            >
+              <img
+                src={seasonThumbnailUrl}
+                alt={season.season_title}
+                className='w-10 h-14 object-cover rounded'
+              />
+              <span className='text-left line-clamp-2'>{season.season_title}</span>
+            </button>
           )
         })}
       </div>
-      <button
-        className='p-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center cursor-pointer'
-        onClick={() => scroll('right')}
-        type='button'
-      >
-        <MdChevronRight size={28} />
-      </button>
     </div>
   )
 }

@@ -13,8 +13,8 @@ function SeriesGridItem({ series }: { series: Series }) {
       title={series.title}
     >
       {imgError ? (
-        <div className='w-full max-w-[300px] aspect-video bg-gray-700 rounded shadow mb-2 flex items-center justify-center'>
-          <span className='text-gray-400 text-xs'>No Image</span>
+        <div className='w-full max-w-[300px] aspect-video bg-muted rounded shadow mb-2 flex items-center justify-center'>
+          <span className='text-muted-foreground text-xs'>No Image</span>
         </div>
       ) : (
         <img
@@ -25,7 +25,7 @@ function SeriesGridItem({ series }: { series: Series }) {
           onError={() => setImgError(true)}
         />
       )}
-      <span className='text-sm text-gray-200 text-center break-words line-clamp-2 max-w-[300px] w-full whitespace-normal'>
+      <span className='text-sm text-foreground text-center break-words line-clamp-2 max-w-[300px] w-full whitespace-normal'>
         {series.title}
       </span>
     </Link>
@@ -47,7 +47,7 @@ export function SeriesGrid({
     <section className='mt-8 px-2 md:px-4 lg:px-10 min-h-[320px] flex flex-col'>
       {loading ? (
         <div className='flex justify-center items-center flex-1 min-h-[240px]'>
-          <span className='animate-spin rounded-full border-4 border-gray-600 border-t-transparent w-10 h-10 inline-block' />
+          <span className='animate-spin rounded-full border-4 border-muted-foreground/40 border-t-transparent w-10 h-10 inline-block' />
         </div>
       ) : (
         <>

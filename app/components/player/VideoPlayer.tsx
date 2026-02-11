@@ -75,6 +75,14 @@ export default function VideoPlayer({
 
   // --- Handlers ---
   const handleSeek = (sec: number) => playerRef.current?.seekTo(sec, 'seconds')
+  const handleSeekRelative = (delta: number) => {
+    const player = playerRef.current
+    if (!player) return
+    const base = player.getCurrentTime?.() ?? currentTime
+    const maxTime = duration > 0 ? duration : base
+    const next = Math.max(0, Math.min(maxTime, base + delta))
+    player.seekTo(next, 'seconds')
+  }
   const handlePlayPause = () => setPlaying(p => !p)
   const handlePlaybackRateChange = (rate: number) => setPlaybackRate(rate)
   const handleVolumeChange = (v: number) => setVolume(v)
@@ -243,6 +251,7 @@ export default function VideoPlayer({
           playing={playing}
           onPlayPause={handlePlayPause}
           onSeek={handleSeek}
+          onSeekRelative={handleSeekRelative}
           onSeekBarDrag={dragging => {
             if (!dragging) lastSeekDragEndTime.current = Date.now()
           }}

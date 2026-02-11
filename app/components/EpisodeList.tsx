@@ -16,41 +16,43 @@ export function EpisodeList({ episodes }: EpisodeListProps) {
   }, [])
 
   if (!episodes?.length) {
-    return <div className='text-center text-gray-400'>No episodes available</div>
+    return <div className='text-center text-muted-foreground'>No episodes available</div>
   }
 
   return (
-    <>
+    <div className='flex flex-col gap-3 pb-6'>
       {episodes.map(ep => (
         <Link
           key={ep.episode_id}
           to={`/episode/${ep.episode_id}`}
-          className='flex items-center bg-gray-900 hover:bg-gray-800 rounded-lg shadow px-3 py-3 transition-colors'
+          className='flex items-center gap-3 bg-card/70 hover:bg-card border border-border rounded-lg px-3 py-3 transition-colors shadow-sm'
           style={{ maxWidth: '100%' }}
         >
-          <div className='relative w-40 h-24 mr-5 flex-shrink-0'>
+          <div className='relative w-36 h-22 flex-shrink-0'>
             {imgErrorMap[ep.episode_id] || !ep.thumbnail_url ? (
-              <NoImage />
+              <NoImage width='w-36' height='h-22' />
             ) : (
               <img
                 src={ep.thumbnail_url}
                 alt={ep.title}
-                className='w-40 h-24 object-cover rounded'
+                className='w-36 h-22 object-cover rounded'
                 onError={() => handleImgError(ep.episode_id)}
               />
             )}
-            <span className='absolute bottom-1 right-1 bg-gray-700 text-xs text-white px-2 py-0.5 rounded'>
+            <span className='absolute bottom-1 right-1 bg-background/80 text-xs text-foreground px-2 py-0.5 rounded border border-border'>
               {ep.duration_string}
             </span>
           </div>
-          <div className='flex flex-col min-w-0 ml-6'>
-            <div className='text-base font-medium text-gray-100 break-words'>{ep.title}</div>
-            <div className='text-sm text-gray-400 mt-1 break-words'>
+          <div className='flex flex-col min-w-0'>
+            <div className='text-sm font-semibold text-foreground break-words leading-snug'>
+              {ep.title}
+            </div>
+            <div className='text-xs text-muted-foreground mt-1 break-words'>
               {`${dayjs(ep.timestamp).format('YYYY/MM/DD HH:mm:ss (zzz)').replace('Japan Standard Time', 'JST')} (${dayjs(ep.timestamp).fromNow()})`}
             </div>
           </div>
         </Link>
       ))}
-    </>
+    </div>
   )
 }

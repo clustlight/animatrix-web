@@ -5,7 +5,7 @@ import { Link, useNavigate, useLocation } from 'react-router'
 import VideoPlayer from '~/components/player/VideoPlayer'
 import { getApiBaseUrl } from '../lib/config'
 import { EpisodeTimestamp, EpisodeList, SeasonTabs } from '~/components/Episode'
-import { MdEdit, MdCheck, MdClose, MdDownload, MdShare } from 'react-icons/md'
+import { MdDownload, MdShare } from 'react-icons/md'
 import { useToast } from '../components/ToastProvider'
 import { ShareDialog } from '~/components/ShareDialog'
 
@@ -84,14 +84,17 @@ function useEpisodeDownloader(episodeData: Episode): DownloaderResult {
 function Breadcrumbs({ seriesData, seasonData }: { seriesData: Series; seasonData: Season }) {
   return (
     <div className='flex flex-col sm:flex-row items-start sm:items-center justify-between mt-2 w-full max-w-10/12 px-3 gap-2'>
-      <nav className='flex items-center gap-2 text-xs sm:text-sm text-gray-400'>
-        <Link to={`/series/${seasonData.series_id}`} className='hover:underline text-blue-500'>
+      <nav className='flex flex-wrap items-center gap-2 text-xs sm:text-sm text-muted-foreground bg-card/70 border border-border rounded-full px-3 py-1.5'>
+        <Link
+          to={`/series/${seasonData.series_id}`}
+          className='hover:text-primary transition-colors'
+        >
           {seriesData.title}
         </Link>
-        <span>&gt;</span>
+        <span className='text-muted-foreground'>/</span>
         <Link
           to={`/series/${seasonData.series_id}?season=${seasonData.season_id}`}
-          className='hover:underline text-blue-500'
+          className='hover:text-primary transition-colors'
         >
           {seasonData.season_title}
         </Link>
@@ -115,6 +118,27 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
   }
 
   const { seriesData, seasonData, episodeData } = loaderData
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const media = window.matchMedia('(min-width: 1024px) and (orientation: landscape)')
+    const apply = () => {
+      document.body.style.overflow = media.matches ? 'hidden' : ''
+    }
+    apply()
+    if (media.addEventListener) {
+      media.addEventListener('change', apply)
+      return () => {
+        media.removeEventListener('change', apply)
+        document.body.style.overflow = ''
+      }
+    }
+    media.addListener(apply)
+    return () => {
+      media.removeListener(apply)
+      document.body.style.overflow = ''
+    }
+  }, [])
 
   // --- クエリパラメータt= をパースして初期シーク位置を渡す ---
   const location = useLocation()
@@ -215,35 +239,7 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
     }
   }, [episodeData.episode_id])
 
-  const [editingDesc, setEditingDesc] = useState(false)
-  const [description, setDescription] = useState(episodeData.description ?? '')
-  const [descLoading, setDescLoading] = useState(false)
-
-  useEffect(() => {
-    setDescription(episodeData.description ?? '')
-    setEditingDesc(false)
-  }, [episodeData.episode_id])
-
   const { showToast } = useToast()
-
-  const handleSaveDesc = useCallback(async () => {
-    setDescLoading(true)
-    try {
-      const baseUrl = await getApiBaseUrl()
-      const res = await fetch(`${baseUrl}/v1/episode/${episodeData.episode_id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ description: description })
-      })
-      if (!res.ok) throw new Error('保存に失敗しました')
-      setEditingDesc(false)
-      showToast('説明文を更新しました', 'success')
-    } catch (e) {
-      showToast(e instanceof Error ? e.message : '保存に失敗しました', 'error')
-    } finally {
-      setDescLoading(false)
-    }
-  }, [description, episodeData.episode_id])
 
   // --- 共有リンクダイアログ用state ---
   const [shareOpen, setShareOpen] = useState(false)
@@ -267,17 +263,14 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
   }
 
   return (
-    <main className='flex flex-col items-center pt-2 pb-4 min-h-screen bg-black'>
+    <main className='flex flex-col items-center pt-2 pb-4 min-h-screen bg-background text-foreground'>
       <title>{pageTitle}</title>
       <Breadcrumbs seriesData={seriesData} seasonData={seasonData} />
-      <div className='flex flex-col lg:flex-row w-full max-w-10/12 px-2 gap-4 mt-4'>
-        <div className='flex flex-col min-w-0 space-y-2 tablet-portrait:w-full flex-1 tablet-portrait:flex-none'>
-          <div className='flex items-center text-sm font-semibold mt-0.5'>
-            {seriesData.title} <span className='mx-1'>|</span> {seasonData.season_title}
-          </div>
+      <div className='flex flex-col tablet-landscape:flex-row lg:flex-row tablet-portrait:!flex-col w-full max-w-none px-0 sm:max-w-10/12 sm:px-2 gap-4 mt-4'>
+        <div className='flex flex-col min-w-0 space-y-2 flex-1'>
           <div className='flex flex-col w-full'>
-            <div className='flex items-center justify-between w-full'>
-              <div className='flex items-center text-xl sm:text-2xl font-bold mt-0.5 mb-2'>
+            <div className='flex flex-col items-center sm:flex-row sm:items-center sm:justify-between w-full'>
+              <div className='flex items-center justify-center text-xl sm:text-2xl font-bold mt-0.5 mb-2 text-center sm:text-left w-full sm:w-auto'>
                 {episodeData.title}
               </div>
               <div className='flex flex-col items-end gap-1 ml-4 hidden xl:flex'>
@@ -303,7 +296,7 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
                 </div>
                 {progress !== null && (
                   <div className='w-44 flex flex-col justify-center'>
-                    <div className='bg-gray-200 rounded-full h-2.5'>
+                    <div className='bg-muted rounded-full h-2.5'>
                       <div
                         className='bg-blue-600 h-2.5 rounded-full transition-all'
                         style={{ width: `${progress}%` }}
@@ -315,53 +308,9 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
                 {error && <div className='text-red-500'>{error}</div>}
               </div>
             </div>
-            <div className='mt-2 text-gray-300 text-sm whitespace-pre-line'>
-              {editingDesc ? (
-                <div className='flex flex-col gap-2'>
-                  <textarea
-                    className='bg-gray-800 text-white px-2 py-1 rounded resize-vertical min-h-[60px]'
-                    value={description}
-                    onChange={e => setDescription(e.target.value)}
-                    disabled={descLoading}
-                  />
-                  <div className='flex gap-2'>
-                    <button
-                      onClick={handleSaveDesc}
-                      disabled={descLoading}
-                      className='px-3 py-1 bg-blue-700 text-white rounded flex items-center gap-1'
-                    >
-                      <MdCheck size={20} />
-                      保存
-                    </button>
-                    <button
-                      onClick={() => {
-                        setEditingDesc(false)
-                        setDescription(episodeData.description ?? '')
-                      }}
-                      disabled={descLoading}
-                      className='px-3 py-1 bg-gray-700 text-white rounded flex items-center gap-1'
-                    >
-                      <MdClose size={20} />
-                      キャンセル
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className='flex items-start gap-2'>
-                  <span>{description}</span>
-                  <button
-                    className='ml-2 text-gray-400 hover:text-blue-500'
-                    title='説明文編集'
-                    onClick={() => setEditingDesc(true)}
-                  >
-                    <MdEdit size={18} />
-                  </button>
-                </div>
-              )}
-            </div>
           </div>
           {episodeData.video_url && (
-            <div className='tablet-portrait:w-full'>
+            <div className='w-full'>
               <VideoPlayer
                 key={episodeData.episode_id}
                 url={episodeData.video_url}
@@ -373,7 +322,7 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
             </div>
           )}
         </div>
-        <div className='flex flex-col min-w-0 max-w-md md:w-2/3 w-full'>
+        <div className='flex flex-col min-w-0 w-full max-w-none tablet-landscape:max-w-md lg:max-w-md tablet-landscape:w-2/3 lg:w-2/3 tablet-portrait:!w-full tablet-portrait:!max-w-none'>
           <SeasonTabs
             seasonList={seasonList}
             selectedSeasonId={selectedSeasonId}

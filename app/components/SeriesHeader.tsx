@@ -35,13 +35,13 @@ export function SeriesHeader({
   originalTitle
 }: SeriesHeaderProps) {
   return (
-    <div className='flex items-center gap-12'>
-      <div className='w-40 h-60 relative flex-shrink-0'>
-        <PortraitImage src={portraitUrl} alt={title} />
+    <div className='flex flex-col items-center gap-3 w-full sm:flex-row sm:items-center sm:justify-center sm:gap-4'>
+      <div className='w-32 h-48 sm:w-36 sm:h-52 md:w-40 md:h-56 relative flex-shrink-0'>
+        <PortraitImage src={portraitUrl} alt={title} className='w-full h-full' />
       </div>
-      <div>
+      <div className='min-w-0 w-full sm:flex-1 sm:max-w-[28rem] text-center'>
         <h1
-          className={`font-bold flex items-center gap-2 max-w-[22rem] break-words whitespace-normal ${
+          className={`font-bold flex flex-wrap items-center justify-center gap-2 max-w-full break-words whitespace-normal ${
             title.length > 40 ? 'text-base' : title.length > 24 ? 'text-lg' : 'text-2xl'
           }`}
         >
@@ -51,7 +51,7 @@ export function SeriesHeader({
                 type='text'
                 value={title}
                 onChange={e => setTitle(e.target.value)}
-                className='bg-gray-800 text-white px-2 py-1 rounded w-full max-w-[20rem]'
+                className='bg-background text-foreground border border-border px-2 py-1 rounded w-full max-w-full'
                 disabled={editLoading}
               />
               <button
@@ -77,7 +77,7 @@ export function SeriesHeader({
           ) : (
             <>
               <span
-                className={`truncate block max-w-[20rem] break-words whitespace-normal ${
+                className={`truncate block max-w-full break-words whitespace-normal text-center ${
                   title.length > 40 ? 'text-base' : title.length > 24 ? 'text-lg' : 'text-2xl'
                 }`}
               >
@@ -85,7 +85,7 @@ export function SeriesHeader({
               </span>
               <button
                 onClick={() => setEditing(true)}
-                className='ml-2 text-blue-400 cursor-pointer'
+                className='ml-2 text-primary cursor-pointer'
                 aria-label='編集'
               >
                 <MdEdit size={22} />
@@ -93,10 +93,10 @@ export function SeriesHeader({
             </>
           )}
         </h1>
-        <div className='text-gray-400 text-sm mt-1'>
+        <div className='text-muted-foreground text-sm mt-1 text-center'>
           {`シーズン数: ${totalSeasons}　全${totalEpisodes}話`}
         </div>
-        <div className='mt-4 flex gap-2'>
+        <div className='mt-4 flex flex-wrap gap-2 justify-center'>
           <button
             className='px-3 py-1 bg-blue-700 hover:bg-blue-800 text-white rounded flex items-center gap-2 cursor-pointer transition-colors disabled:opacity-60'
             onClick={onMoveClick}

@@ -33,11 +33,11 @@ export function ShareDialog({
   return (
     <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/60'>
       <div
-        className='bg-gray-900 text-gray-100 rounded shadow-lg p-6 min-w-[420px] max-w-[98vw] relative'
+        className='bg-card text-card-foreground border border-border rounded shadow-lg p-6 min-w-[420px] max-w-[98vw] relative'
         style={{ boxShadow: '0 8px 32px 0 rgba(0,0,0,0.45)', width: '480px' }}
       >
         <button
-          className='absolute top-2 right-2 text-gray-400 hover:text-gray-200 cursor-pointer'
+          className='absolute top-2 right-2 text-muted-foreground hover:text-foreground cursor-pointer'
           onClick={onClose}
           aria-label='閉じる'
         >
@@ -61,7 +61,7 @@ export function ShareDialog({
             type='text'
             readOnly
             value={url}
-            className='flex-1 border border-gray-700 rounded px-2 py-1 text-sm bg-gray-800 text-gray-100'
+            className='flex-1 border border-border rounded px-2 py-1 text-sm bg-background text-foreground'
             style={{ minWidth: 0 }}
             onFocus={e => e.target.select()}
           />

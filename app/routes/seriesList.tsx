@@ -111,7 +111,9 @@ export default function SeriesList({
         <div className='flex items-center w-full max-w-7xl mt-6 px-4'>
           <h1 className='text-2xl font-bold flex items-center gap-4 flex-1 justify-start'>
             Series List
-            <span className='text-base font-normal text-gray-300'>({allSeries.length})</span>
+            <span className='text-base font-normal text-muted-foreground'>
+              ({allSeries.length})
+            </span>
           </h1>
           <SortToggleButton
             sortOrder={sortOrder}
@@ -120,9 +122,9 @@ export default function SeriesList({
         </div>
         <SeriesGrid seriesList={displayedSeries} loading={allSeries.length === 0} />
         <div ref={loaderRef} style={{ height: 40 }} />
-        {loading && <div className='text-gray-500 mb-4'>Loading...</div>}
+        {loading && <div className='text-muted-foreground mb-4'>Loading...</div>}
         {displayedSeries.length >= allSeries.length && (
-          <div className='text-gray-400 mb-4'>List End</div>
+          <div className='text-muted-foreground mb-4'>List End</div>
         )}
       </div>
     </main>

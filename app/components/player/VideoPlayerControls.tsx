@@ -20,6 +20,7 @@ type VideoPlayerControlsProps = {
   playing: boolean
   onPlayPause: () => void
   onSeek: (sec: number) => void
+  onSeekRelative: (delta: number) => void
   onFullscreen: () => void
   currentTime: number
   duration: number
@@ -73,7 +74,7 @@ const PlaybackRateControl: React.FC<{
       onMouseLeave={handleMouseLeave}
     >
       <MdSpeed size={30} className='ml-2 cursor-pointer' />
-      <span className='ml-2 text-white text-base select-none'>{playbackRate.toFixed(2)}x</span>
+      <span className='ml-2 text-foreground text-base select-none'>{playbackRate.toFixed(2)}x</span>
       <div
         className={`
           absolute left-1/2 bottom-10 -translate-x-1/2
@@ -85,12 +86,12 @@ const PlaybackRateControl: React.FC<{
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
-        <div className='flex flex-col gap-2 bg-gray-700 rounded px-2 py-2 shadow-lg'>
+        <div className='flex flex-col gap-2 bg-card text-foreground rounded px-2 py-2 shadow-lg border border-border'>
           {PLAYBACK_RATES.map(rate => (
             <button
               key={rate}
-              className={`text-white px-4 py-1 rounded transition cursor-pointer
-                ${playbackRate === rate ? 'bg-blue-500' : 'hover:bg-gray-600'}`}
+              className={`text-foreground px-4 py-1 rounded transition cursor-pointer
+                ${playbackRate === rate ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
               onClick={() => onPlaybackRateChange(rate)}
               tabIndex={-1}
               type='button'
@@ -112,7 +113,7 @@ const IconButton: React.FC<{
 }> = ({ onClick, children, label }) => (
   <button
     tabIndex={-1}
-    className='p-2 rounded hover:bg-white/10 flex items-center justify-center cursor-pointer'
+    className='p-2 rounded hover:bg-muted/60 flex items-center justify-center cursor-pointer focus:outline-none focus-visible:outline-none'
     onClick={onClick}
     aria-label={label}
     type='button'
@@ -215,6 +216,7 @@ export default function VideoPlayerControls({
   playing,
   onPlayPause,
   onSeek,
+  onSeekRelative,
   onFullscreen,
   currentTime,
   duration,
@@ -303,14 +305,14 @@ export default function VideoPlayerControls({
                 <IconButton label='Back 30s' onClick={() => onSeek(currentTime - 30)}>
                   <MdReplay30 size={28} />
                 </IconButton>
-                <IconButton label='Back 10s' onClick={() => onSeek(currentTime - 10)}>
+                <IconButton label='Back 10s' onClick={() => onSeekRelative(-10)}>
                   <MdReplay10 size={28} />
                 </IconButton>
                 <PlayPauseButton playing={playing} onClick={onPlayPause} />
-                <IconButton label='Forward 10s' onClick={() => onSeek(currentTime + 10)}>
+                <IconButton label='Forward 10s' onClick={() => onSeekRelative(10)}>
                   <MdForward10 size={28} />
                 </IconButton>
-                <IconButton label='Forward 30s' onClick={() => onSeek(currentTime + 30)}>
+                <IconButton label='Forward 30s' onClick={() => onSeekRelative(30)}>
                   <MdForward30 size={28} />
                 </IconButton>
               </>

@@ -14,9 +14,9 @@ export function DeleteDialog({ open, onDelete, onCancel, loading }: DeleteDialog
       className='fixed inset-0 flex items-center justify-center z-50'
       style={{ background: 'rgba(0,0,0,0.55)' }}
     >
-      <div className='bg-gray-900 p-6 rounded shadow-lg flex flex-col' style={{ width: 400 }}>
+      <div className='bg-card text-card-foreground border border-border p-5 sm:p-6 rounded shadow-lg flex flex-col w-[92vw] max-w-md'>
         <h2 className='text-lg font-bold mb-2'>シリーズを削除しますか？</h2>
-        <div className='mb-4 text-gray-300'>この操作は元に戻せません。</div>
+        <div className='mb-4 text-muted-foreground'>この操作は元に戻せません。</div>
         <div className='flex gap-4'>
           <button
             className='px-4 py-2 bg-red-700 text-white rounded cursor-pointer'
@@ -26,7 +26,7 @@ export function DeleteDialog({ open, onDelete, onCancel, loading }: DeleteDialog
             削除する
           </button>
           <button
-            className='px-4 py-2 bg-gray-700 text-white rounded cursor-pointer'
+            className='px-4 py-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded cursor-pointer'
             onClick={onCancel}
             disabled={loading}
           >

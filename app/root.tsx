@@ -39,7 +39,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Meta />
         <Links />
       </head>
-      <body className='bg-gray-900 text-gray-100 font-sans antialiased'>
+      <body className='bg-background text-foreground font-sans antialiased'>
         <ToastProvider>
           {children}
           <ScrollRestoration />
@@ -53,6 +53,40 @@ export function Layout({ children }: { children: React.ReactNode }) {
 export default function App() {
   const [searchParams, setSearchParams] = React.useState('')
   const navigate = useNavigate()
+  const [theme, setTheme] = React.useState<'light' | 'dark'>('dark')
+  const [hasUserTheme, setHasUserTheme] = React.useState(false)
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return
+    const storedTheme = window.localStorage.getItem('theme')
+    if (storedTheme === 'light' || storedTheme === 'dark') {
+      setTheme(storedTheme)
+      setHasUserTheme(true)
+    }
+  }, [])
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+    const applySystemTheme = () => {
+      if (!hasUserTheme) {
+        setTheme(mediaQuery.matches ? 'dark' : 'light')
+      }
+    }
+    applySystemTheme()
+    mediaQuery.addEventListener('change', applySystemTheme)
+    return () => mediaQuery.removeEventListener('change', applySystemTheme)
+  }, [hasUserTheme])
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return
+    document.documentElement.classList.toggle('dark', theme === 'dark')
+    if (hasUserTheme) {
+      window.localStorage.setItem('theme', theme)
+    } else {
+      window.localStorage.removeItem('theme')
+    }
+  }, [theme, hasUserTheme])
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter' && searchParams.trim()) {
       navigate(`/search?q=${encodeURIComponent(searchParams.trim())}`)
@@ -60,23 +94,20 @@ export default function App() {
   }
 
   return (
-    <div className='relative min-h-screen bg-black'>
+    <div className='relative min-h-screen bg-background text-foreground'>
       {/* Header background only */}
       <div
-        className='fixed top-0 left-0 w-screen z-40'
+        className='fixed top-0 left-0 w-screen z-40 bg-background/90 border-b border-border shadow-md backdrop-blur-md'
         style={{
           minHeight: '70px',
-          height: '70px', // Make the background taller to cover logo and search bar
-          background: 'rgba(17, 24, 39, 0.92)', // Tailwind's gray-900 with opacity
-          boxShadow: '0 2px 8px #0008',
-          backdropFilter: 'blur(6px)'
+          height: '70px' // Make the background taller to cover logo and search bar
         }}
       />
       {/* Logo & Series link */}
       <div className='fixed top-3 left-2 md:left-8 z-50 flex items-center gap-4 h-[42px]'>
         <Link
           to='/'
-          className='font-bold text-white hover:text-blue-400 transition-colors cursor-pointer select-none text-lg md:text-xl flex items-center'
+          className='font-bold text-foreground hover:text-primary transition-colors cursor-pointer select-none text-lg md:text-xl flex items-center'
           style={{
             textShadow: '0 2px 8px #0008',
             padding: '0.25rem 0.75rem',
@@ -91,7 +122,7 @@ export default function App() {
         </Link>
         <Link
           to='/series'
-          className='font-semibold text-blue-300 hover:text-blue-400 transition-colors px-3 py-1 rounded flex items-center'
+          className='font-semibold text-muted-foreground hover:text-foreground transition-colors px-3 py-1 rounded flex items-center'
           style={{
             textShadow: '0 2px 8px #0008',
             padding: '0.25rem 0.75rem',
@@ -113,9 +144,10 @@ export default function App() {
           left-auto
           z-40
           flex items-center
+          gap-2
           w-1/3
-          min-w-[160px]
-          max-w-xs
+          min-w-[200px]
+          max-w-sm
         `}
         style={{
           height: '42px'
@@ -127,6 +159,17 @@ export default function App() {
           onKeyDown={handleKeyDown}
           placeholder='Search'
         />
+        <button
+          type='button'
+          className='text-foreground hover:text-primary border border-border bg-card/70 hover:bg-card transition-colors px-3 py-1 rounded text-sm h-full'
+          onClick={() => {
+            setHasUserTheme(true)
+            setTheme(theme === 'dark' ? 'light' : 'dark')
+          }}
+          aria-label='Toggle light and dark theme'
+        >
+          {theme === 'dark' ? 'Light' : 'Dark'}
+        </button>
       </div>
       {/* Main content */}
       <div className='pt-20'>
