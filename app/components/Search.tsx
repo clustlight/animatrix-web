@@ -17,8 +17,8 @@ export const Search: React.FC<SearchProps> = ({ placeholder, value, onChange, on
       onKeyDown={onKeyDown}
       className='
         border rounded
-        px-2 py-1 text-sm   // モバイル用
-        sm:px-3 sm:py-2 sm:text-base // タブレット以上
+        px-2 py-1 text-sm
+        sm:px-3 sm:py-2 sm:text-base
         w-full
         focus:outline-none focus:ring-orange-400 focus:border-orange-400
       '

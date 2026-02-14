@@ -266,14 +266,14 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
     <main className='flex flex-col items-center pt-2 pb-4 min-h-screen bg-background text-foreground'>
       <title>{pageTitle}</title>
       <Breadcrumbs seriesData={seriesData} seasonData={seasonData} />
-      <div className='flex flex-col tablet-landscape:flex-row lg:flex-row tablet-portrait:!flex-col w-full max-w-none px-0 sm:max-w-10/12 sm:px-2 gap-4 mt-4'>
+      <div className='flex flex-col tablet-landscape:flex-row lg:flex-row tablet-portrait:flex-col! w-full max-w-none px-0 sm:max-w-10/12 sm:px-2 gap-4 mt-4'>
         <div className='flex flex-col min-w-0 space-y-2 flex-1'>
           <div className='flex flex-col w-full'>
             <div className='flex flex-col items-center sm:flex-row sm:items-center sm:justify-between w-full'>
               <div className='flex items-center justify-center text-xl sm:text-2xl font-bold mt-0.5 mb-2 text-center sm:text-left w-full sm:w-auto'>
                 {episodeData.title}
               </div>
-              <div className='flex flex-col items-end gap-1 ml-4 hidden xl:flex'>
+              <div className='flex-col items-end gap-1 ml-4 hidden xl:flex'>
                 <div className='flex items-center gap-2'>
                   <button
                     onClick={download}
@@ -322,7 +322,7 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
             </div>
           )}
         </div>
-        <div className='flex flex-col min-w-0 w-full max-w-none tablet-landscape:max-w-md lg:max-w-md tablet-landscape:w-2/3 lg:w-2/3 tablet-portrait:!w-full tablet-portrait:!max-w-none'>
+        <div className='flex flex-col min-w-0 w-full max-w-none tablet-landscape:max-w-md lg:max-w-md tablet-landscape:w-2/3 lg:w-2/3 tablet-portrait:w-full! tablet-portrait:max-w-none!'>
           <SeasonTabs
             seasonList={seasonList}
             selectedSeasonId={selectedSeasonId}

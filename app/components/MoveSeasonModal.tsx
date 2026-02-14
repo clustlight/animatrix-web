@@ -11,7 +11,7 @@ type MoveSeasonModalProps = {
   onClose: () => void
   seasonId: string
   onMove: (targetSeriesId: string) => void
-  seasonTitle?: string // 追加: シーズン名を受け取る
+  seasonTitle?: string
 }
 
 export function MoveSeasonModal({ open, onClose, onMove, seasonTitle }: MoveSeasonModalProps) {
@@ -21,7 +21,6 @@ export function MoveSeasonModal({ open, onClose, onMove, seasonTitle }: MoveSeas
   const [imgErrorMap, setImgErrorMap] = useState<{ [id: string]: boolean }>({})
   const [search, setSearch] = useState('')
 
-  // モーダル表示中はbodyスクロール禁止
   useEffect(() => {
     if (open) {
       document.body.style.overflow = 'hidden'
@@ -69,7 +68,7 @@ export function MoveSeasonModal({ open, onClose, onMove, seasonTitle }: MoveSeas
       className='fixed inset-0 flex items-center justify-center z-50'
       style={{ background: 'rgba(0,0,0,0.55)' }}
     >
-      <div className='bg-card text-card-foreground border border-border p-5 sm:p-6 rounded shadow-lg flex flex-col w-[96vw] sm:w-[520px] max-w-[96vw] sm:max-w-[520px] min-w-0 h-[90vh] sm:h-[820px] max-h-[90vh] sm:min-h-[180px]'>
+      <div className='bg-card text-card-foreground border border-border p-5 sm:p-6 rounded shadow-lg flex flex-col w-[96vw] sm:w-130 max-w-[96vw] sm:max-w-130 min-w-0 h-[90vh] sm:h-205 max-h-[90vh] sm:min-h-45'>
         {seasonTitle && (
           <div className='mb-2 text-base text-primary font-semibold text-center'>{seasonTitle}</div>
         )}

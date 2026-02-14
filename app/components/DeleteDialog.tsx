@@ -1,5 +1,3 @@
-import React from 'react'
-
 type DeleteDialogProps = {
   open: boolean
   onDelete: () => void
