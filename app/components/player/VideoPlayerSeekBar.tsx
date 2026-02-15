@@ -123,7 +123,7 @@ export default function VideoPlayerSeekBar({
       if (e.touches.length === 0) return
       handleSeekStart(e.touches[0].clientX, e.touches[0].clientY)
       attachDragListeners()
-      e.preventDefault()
+      // do not call preventDefault here — use CSS `touch-action: none` on the element
     },
     [handleSeekStart, attachDragListeners]
   )
@@ -142,6 +142,7 @@ export default function VideoPlayerSeekBar({
       aria-valuemax={totalDuration}
       aria-valuenow={displayedValue}
       className='relative w-full h-1.5 rounded-xl cursor-pointer hover:h-2 transition-all duration-150 bg-white/30'
+      style={{ touchAction: 'none' }}
       onMouseDown={handleMouseDown}
       onTouchStart={handleTouchStart}
     >

@@ -126,6 +126,11 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
 
   const { seriesData, seasonData, episodeData } = loaderData
 
+  // Keep the currently-displayed data in state so we can update in-place
+  const [currentSeriesData, setCurrentSeriesData] = useState(seriesData)
+  const [currentSeasonData, setCurrentSeasonData] = useState(seasonData)
+  const [currentEpisodeData, setCurrentEpisodeData] = useState(episodeData)
+
   useEffect(() => {
     if (typeof window === 'undefined') return
     const media = window.matchMedia('(min-width: 1024px) and (orientation: landscape)')
@@ -167,13 +172,13 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
       seconds = Number(t)
     }
     setInitialSeek(seconds)
-  }, [location.search, episodeData.episode_id])
+  }, [location.search, currentEpisodeData.episode_id])
 
-  const [selectedSeasonId, setSelectedSeasonId] = useState<string>(seasonData.season_id)
-  const [episodeList, setEpisodeList] = useState<Episode[]>(seasonData.episodes || [])
-  const [seasonList, setSeasonList] = useState<Season[]>(seriesData.seasons || [])
+  const [selectedSeasonId, setSelectedSeasonId] = useState<string>(currentSeasonData.season_id)
+  const [episodeList, setEpisodeList] = useState<Episode[]>(currentSeasonData.episodes || [])
+  const [seasonList, setSeasonList] = useState<Season[]>(currentSeriesData.seasons || [])
 
-  const pageTitle = `${episodeData.title} | animatrix`
+  const pageTitle = `${currentEpisodeData.title} | animatrix`
 
   // selectedSeasonIdが変わったらseasonとseriesを再取得
   useEffect(() => {
@@ -195,11 +200,12 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
   const { progress, download, error } = useEpisodeDownloader(episodeData)
   const navigate = useNavigate()
   const [autoPlay, setAutoPlay] = useState(false)
+  const [startFullscreen, setStartFullscreen] = useState(false)
 
   // 次のエピソード・シーズン判定ロジック
   const getNextEpisode = () => {
     if (!episodeList.length) return null
-    const currentIdx = episodeList.findIndex(e => e.episode_id === episodeData.episode_id)
+    const currentIdx = episodeList.findIndex(e => e.episode_id === currentEpisodeData.episode_id)
     if (currentIdx < 0) return null
 
     // 次の話が同じシーズンにある場合
@@ -224,27 +230,71 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
     return null
   }
 
+  // Load another episode *in-place* (do not unmount VideoPlayer) so fullscreen can be preserved
+  const loadEpisodeInPlace = async (
+    episodeId: string,
+    opts?: { keepFullscreen?: boolean; autoPlay?: boolean }
+  ) => {
+    try {
+      const baseUrl = await getApiBaseUrl()
+      const [ep, season] = await Promise.all([
+        fetchJson<Episode>(`${baseUrl}/v1/episode/${episodeId}`),
+        fetchJson<Season>(`${baseUrl}/v1/season/${episodeId.slice(0, episodeId.lastIndexOf('_'))}`)
+      ])
+      const series = await fetchJson<Series>(`${baseUrl}/v1/series/${season.series_id}`)
+
+      // update state in-place (VideoPlayer remains mounted)
+      setCurrentEpisodeData(ep)
+      setCurrentSeasonData(season)
+      setCurrentSeriesData(series)
+      setSelectedSeasonId(season.season_id)
+      setEpisodeList(season.episodes || [])
+      setSeasonList(series.seasons || [])
+
+      // update URL/history so back/forward work and pass flags
+      const usr = { autoPlay: !!opts?.autoPlay, keepFullscreen: !!opts?.keepFullscreen }
+      const newState = { ...window.history.state, usr }
+      window.history.pushState(newState, '', `/episode/${ep.episode_id}`)
+
+      // update local playback flags
+      setAutoPlay(!!opts?.autoPlay)
+      setStartFullscreen(!!opts?.keepFullscreen)
+
+      // update document title
+      if (typeof document !== 'undefined') document.title = `${ep.title} | animatrix`
+    } catch {
+      // fallback to full navigation if something goes wrong
+      const next = getNextEpisode()
+      if (next && next.episodeId)
+        navigate(`/episode/${next.episodeId}`, {
+          state: { autoPlay: true, keepFullscreen: !!opts?.keepFullscreen }
+        })
+    }
+  }
+
   // 動画終了時のコールバック
-  const handleVideoEnded = () => {
+  const handleVideoEnded = (opts?: { keepFullscreen?: boolean }) => {
     const next = getNextEpisode()
-    if (next) {
-      setSelectedSeasonId(next.seasonId)
-      navigate(`/episode/${next.episodeId}`, { state: { autoPlay: true } }) // stateで渡す
+    if (next && next.episodeId) {
+      // load next episode in-place so the player DOM stays mounted and fullscreen is preserved
+      loadEpisodeInPlace(next.episodeId, { keepFullscreen: !!opts?.keepFullscreen, autoPlay: true })
     }
   }
 
   // ページ遷移後に自動再生する
   useEffect(() => {
-    // location.state から autoPlay を取得
+    // location.state から autoPlay と keepFullscreen を取得
     const state = window.history.state && window.history.state.usr
     setAutoPlay(state && state.autoPlay === true)
+    setStartFullscreen(state && state.keepFullscreen === true)
 
-    // 再生フラグを消す（1回だけ有効にする）
-    if (state && state.autoPlay) {
-      const newState = { ...window.history.state, usr: { ...state, autoPlay: false } }
+    // 再生フラグと keepFullscreen を消す（1回だけ有効にする）
+    if (state && (state.autoPlay || state.keepFullscreen)) {
+      const newUsr = { ...state, autoPlay: false, keepFullscreen: false }
+      const newState = { ...window.history.state, usr: newUsr }
       window.history.replaceState(newState, '')
     }
-  }, [episodeData.episode_id])
+  }, [currentEpisodeData.episode_id])
 
   const { showToast } = useToast()
 
@@ -260,7 +310,7 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
 
   // 共有リンク生成
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''
-  const episodeUrl = `/episode/${episodeData.episode_id}`
+  const episodeUrl = `/episode/${currentEpisodeData.episode_id}`
   let shareUrl = baseUrl + episodeUrl
   if (shareIncludeTime && currentTime > 0) {
     // t=1m30s形式で
@@ -278,7 +328,7 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
           <div className='flex flex-col w-full'>
             <div className='flex flex-col items-center sm:flex-row sm:items-center sm:justify-between w-full'>
               <div className='flex items-center justify-center text-xl sm:text-2xl font-bold mt-0.5 mb-2 text-center sm:text-left w-full sm:w-auto'>
-                {episodeData.title}
+                {currentEpisodeData.title}
               </div>
               <div className='flex-col items-end gap-1 ml-4 hidden xl:flex'>
                 <div className='flex items-center gap-2'>
@@ -299,7 +349,7 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
                     <MdShare size={18} />
                   </button>
                   <span className='w-2' />
-                  <EpisodeTimestamp timestamp={episodeData.timestamp} />
+                  <EpisodeTimestamp timestamp={currentEpisodeData.timestamp} />
                 </div>
                 {progress !== null && (
                   <div className='w-44 flex flex-col justify-center'>
@@ -316,15 +366,15 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
               </div>
             </div>
           </div>
-          {episodeData.video_url && (
+          {currentEpisodeData.video_url && (
             <div className='w-full'>
               <VideoPlayer
-                key={episodeData.episode_id}
-                url={episodeData.video_url}
-                title={episodeData.title}
-                season={seasonData.season_title}
+                url={currentEpisodeData.video_url}
+                title={currentEpisodeData.title}
+                season={currentSeasonData.season_title}
                 onEnded={handleVideoEnded}
                 autoPlay={autoPlay}
+                startFullscreen={startFullscreen}
                 initialSeek={initialSeek ?? undefined}
                 onTimeUpdate={handleTimeUpdate}
               />
@@ -337,7 +387,16 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
             selectedSeasonId={selectedSeasonId}
             setSelectedSeasonId={setSelectedSeasonId}
           />
-          <EpisodeList episodeList={episodeList} episodeData={episodeData} />
+          <EpisodeList
+            episodeList={episodeList}
+            episodeData={currentEpisodeData}
+            onSelect={id =>
+              loadEpisodeInPlace(id, {
+                keepFullscreen: !!document.fullscreenElement,
+                autoPlay: true
+              })
+            }
+          />
         </div>
       </div>
       <ShareDialog

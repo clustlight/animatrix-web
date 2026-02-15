@@ -59,10 +59,12 @@ export function SeasonTabs({
 
 export function EpisodeList({
   episodeList,
-  episodeData
+  episodeData,
+  onSelect
 }: {
   episodeList: Episode[]
   episodeData: Episode
+  onSelect?: (episodeId: string) => void
 }) {
   return (
     <div
@@ -95,17 +97,32 @@ export function EpisodeList({
           key={ep.episode_id}
           episode={ep}
           isActive={ep.episode_id === episodeData.episode_id}
+          onSelect={onSelect}
         />
       ))}
     </div>
   )
 }
 
-function EpisodeListItem({ episode, isActive }: { episode: Episode; isActive: boolean }) {
+function EpisodeListItem({
+  episode,
+  isActive,
+  onSelect
+}: {
+  episode: Episode
+  isActive: boolean
+  onSelect?: (episodeId: string) => void
+}) {
   const [imgError, setImgError] = useState(false)
   return (
     <Link
       to={`/episode/${episode.episode_id}`}
+      onClick={e => {
+        if (onSelect) {
+          e.preventDefault()
+          onSelect(episode.episode_id)
+        }
+      }}
       className={`group flex items-center gap-3 px-3 py-2 rounded-lg border transition ${
         isActive
           ? 'bg-primary/15 border-primary/40 ring-1 ring-primary/20'
