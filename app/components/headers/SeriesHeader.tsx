@@ -1,5 +1,5 @@
 import { MdEdit, MdCheck, MdClose, MdDelete, MdSwapHoriz } from 'react-icons/md'
-import { PortraitImage } from '~/components/PortraitImage'
+import { PortraitImage } from '../images/PortraitImage'
 
 type SeriesHeaderProps = {
   editing: boolean

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Series } from '../types'
 import { getApiBaseUrl } from '../lib/config'
-import { SeriesGrid } from '../components/SeriesGrid'
+import { SeriesGrid } from '../components/lists/SeriesGrid'
 import { MdArrowUpward, MdArrowDownward } from 'react-icons/md'
 
 const PAGE_SIZE = 30

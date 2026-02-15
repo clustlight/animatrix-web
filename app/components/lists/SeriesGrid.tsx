@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import type { Series } from '../types'
+import type { Series } from '../../types'
 
 function SeriesGridItem({ series }: { series: Series }) {
   const [imgError, setImgError] = useState(false)

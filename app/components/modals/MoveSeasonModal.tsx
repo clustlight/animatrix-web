@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { Series } from '../types'
-import { getApiBaseUrl } from '../lib/config'
-import { NoImage } from './NoImage'
+import type { Series } from '../../types'
+import { getApiBaseUrl } from '../../lib/config'
+import { NoImage } from '../images/NoImage'
 
 const normalize = (str: string) =>
   str.toLowerCase().replace(/[ぁ-ん]/g, s => String.fromCharCode(s.charCodeAt(0) + 0x60))
@@ -82,12 +82,7 @@ export function MoveSeasonModal({ open, onClose, onMove, seasonTitle }: MoveSeas
         />
         <div className='overflow-y-auto flex-1 mb-2 mt-4 max-h-[70vh]'>
           <style>
-            {`
-              .overflow-y-auto::-webkit-scrollbar { width: 8px; background: var(--scrollbar-track); }
-              .overflow-y-auto::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px; }
-              .overflow-y-auto::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
-              .overflow-y-auto::-webkit-scrollbar-track { background: var(--scrollbar-track); }
-            `}
+            {`\n              .overflow-y-auto::-webkit-scrollbar { width: 8px; background: var(--scrollbar-track); }\n              .overflow-y-auto::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px; }\n              .overflow-y-auto::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }\n              .overflow-y-auto::-webkit-scrollbar-track { background: var(--scrollbar-track); }\n            `}
           </style>
           {loading ? (
             <div>読み込み中...</div>

@@ -9,11 +9,11 @@ import {
   Link
 } from 'react-router'
 
-import { ToastProvider } from './components/ToastProvider'
+import { ToastProvider } from './components/providers/ToastProvider'
 
 import type { Route } from './+types/root'
 import './app.css'
-import { Search } from './components/Search'
+import { Search } from './components/search/Search'
 import React from 'react'
 
 export const links: Route.LinksFunction = () => [
@@ -117,7 +117,7 @@ export default function App() {
         }}
       />
       {/* Logo & Series link */}
-      <div className='fixed top-3 left-2 md:left-8 z-50 flex items-center gap-4 h-[42px]'>
+      <div className='fixed top-3 left-2 md:left-8 z-50 flex items-center gap-4 h-10.5'>
         <Link
           to='/'
           className='font-bold text-foreground hover:text-primary transition-colors cursor-pointer select-none text-lg md:text-xl flex items-center'
@@ -159,7 +159,7 @@ export default function App() {
           flex items-center
           gap-2
           w-1/3
-          min-w-[200px]
+          min-w-50
           max-w-sm
         `}
         style={{

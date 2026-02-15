@@ -7,7 +7,7 @@ import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
 import { useState } from 'react'
 import { MdArrowDropDown } from 'react-icons/md'
-import { NoImage } from './NoImage'
+import { NoImage } from '../images/NoImage'
 
 dayjs.extend(relativeTime)
 dayjs.locale('ja')

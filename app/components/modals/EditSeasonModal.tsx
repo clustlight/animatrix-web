@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useToast } from './ToastProvider'
-import type { Episode, Season } from '../types'
-import { getApiBaseUrl } from '../lib/config'
+import { useToast } from '../providers/ToastProvider'
+import type { Episode, Season } from '../../types'
+import { getApiBaseUrl } from '../../lib/config'
 import { MdEdit, MdCheck, MdClose } from 'react-icons/md'
 
 type SyoboiTitleSearchItem = {
@@ -609,12 +609,7 @@ export function EditSeasonModal({
           {syoboiError && <div className='text-red-400 text-xs mb-2'>{syoboiError}</div>}
           <div className='max-h-40 overflow-y-auto mb-2 syoboi-scroll'>
             <style>
-              {`
-                .syoboi-scroll::-webkit-scrollbar { width: 6px; background: var(--scrollbar-track); }
-                .syoboi-scroll::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px; }
-                .syoboi-scroll::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
-                .syoboi-scroll::-webkit-scrollbar-track { background: var(--scrollbar-track); }
-              `}
+              {`\n                .syoboi-scroll::-webkit-scrollbar { width: 6px; background: var(--scrollbar-track); }\n                .syoboi-scroll::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px; }\n                .syoboi-scroll::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }\n                .syoboi-scroll::-webkit-scrollbar-track { background: var(--scrollbar-track); }\n              `}
             </style>
             <ul>
               {syoboiSearched && syoboiResults.length === 0 && !syoboiLoading && (
@@ -684,12 +679,7 @@ export function EditSeasonModal({
         </div>
         <ul className='overflow-y-auto flex-1 mb-2 mt-4 max-h-[70vh]'>
           <style>
-            {`
-              .overflow-y-auto::-webkit-scrollbar { width: 8px; background: var(--scrollbar-track); }
-              .overflow-y-auto::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px; }
-              .overflow-y-auto::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
-              .overflow-y-auto::-webkit-scrollbar-track { background: var(--scrollbar-track); }
-            `}
+            {`\n              .overflow-y-auto::-webkit-scrollbar { width: 8px; background: var(--scrollbar-track); }\n              .overflow-y-auto::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px; }\n              .overflow-y-auto::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }\n              .overflow-y-auto::-webkit-scrollbar-track { background: var(--scrollbar-track); }\n            `}
           </style>
           {episodes.length === 0 ? (
             <li className='text-muted-foreground text-center py-2'>エピソードがありません</li>

@@ -1,4 +1,4 @@
-import type { Season } from '../types'
+import type { Season } from '../../types'
 import { MdEdit } from 'react-icons/md'
 import { useEffect, useState } from 'react'
 

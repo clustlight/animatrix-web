@@ -1,8 +1,8 @@
 import { useCallback, useState } from 'react'
 import { Link } from 'react-router'
-import type { Episode } from '../types'
+import type { Episode } from '../../types'
 import dayjs from 'dayjs'
-import { NoImage } from './NoImage'
+import { NoImage } from '../images/NoImage'
 
 type EpisodeListProps = {
   episodes: Episode[]

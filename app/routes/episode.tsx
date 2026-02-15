@@ -4,10 +4,10 @@ import { useState, useCallback, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router'
 import VideoPlayer from '~/components/player/VideoPlayer'
 import { getApiBaseUrl } from '../lib/config'
-import { EpisodeTimestamp, EpisodeList, SeasonTabs } from '~/components/Episode'
+import { EpisodeTimestamp, EpisodeList, SeasonTabs } from '../components/lists/Episode'
 import { MdDownload, MdShare } from 'react-icons/md'
-import { useToast } from '../components/ToastProvider'
-import { ShareDialog } from '~/components/ShareDialog'
+import { useToast } from '../components/providers/ToastProvider'
+import { ShareDialog } from '../components/dialogs/ShareDialog'
 
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url, { headers: { 'Content-Type': 'application/json' } })
@@ -59,7 +59,14 @@ function useEpisodeDownloader(episodeData: Episode): DownloaderResult {
           if (contentLength) setProgress(Math.round((receivedLength / contentLength) * 100))
         }
       }
-      const blob = new Blob(chunks)
+      // Merge received Uint8Array chunks into one contiguous buffer
+      const merged = new Uint8Array(receivedLength)
+      let position = 0
+      for (const chunk of chunks) {
+        merged.set(chunk, position)
+        position += chunk.length
+      }
+      const blob = new Blob([merged])
       const url = URL.createObjectURL(blob)
 
       const a = document.createElement('a')
