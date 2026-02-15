@@ -1,5 +1,5 @@
 import { MdEdit, MdCheck, MdClose, MdDelete, MdSwapHoriz } from 'react-icons/md'
-import { PortraitImage } from '~/components/PortraitImage'
+import { PortraitImage } from '../images/PortraitImage'
 
 type SeriesHeaderProps = {
   editing: boolean
@@ -36,12 +36,12 @@ export function SeriesHeader({
 }: SeriesHeaderProps) {
   return (
     <div className='flex flex-col items-center gap-3 w-full sm:flex-row sm:items-center sm:justify-center sm:gap-4'>
-      <div className='w-32 h-48 sm:w-36 sm:h-52 md:w-40 md:h-56 relative flex-shrink-0'>
+      <div className='w-32 h-48 sm:w-36 sm:h-52 md:w-40 md:h-56 relative shrink-0'>
         <PortraitImage src={portraitUrl} alt={title} className='w-full h-full' />
       </div>
-      <div className='min-w-0 w-full sm:flex-1 sm:max-w-[28rem] text-center'>
+      <div className='min-w-0 w-full sm:flex-1 sm:max-w-md text-center'>
         <h1
-          className={`font-bold flex flex-wrap items-center justify-center gap-2 max-w-full break-words whitespace-normal ${
+          className={`font-bold flex flex-wrap items-center justify-center gap-2 max-w-full wrap-break-word whitespace-normal ${
             title.length > 40 ? 'text-base' : title.length > 24 ? 'text-lg' : 'text-2xl'
           }`}
         >
@@ -77,7 +77,7 @@ export function SeriesHeader({
           ) : (
             <>
               <span
-                className={`truncate block max-w-full break-words whitespace-normal text-center ${
+                className={`truncate block max-w-full wrap-break-word whitespace-normal text-center ${
                   title.length > 40 ? 'text-base' : title.length > 24 ? 'text-lg' : 'text-2xl'
                 }`}
               >

@@ -1,17 +1,24 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
+import type { RefObject } from 'react'
 
 type VideoPlayerSeekBarProps = {
   currentTime: number
   duration: number
   onSeek: (sec: number) => void
   onDrag?: (dragging: boolean) => void
+  /** Optional: parent container that is rotated (used to map client coords) */
+  rotationContainerRef?: RefObject<HTMLElement>
+  /** Rotation in degrees applied to the container (e.g. 90 or -90) */
+  rotationDeg?: number
 }
 
 export default function VideoPlayerSeekBar({
   currentTime,
   duration,
   onSeek,
-  onDrag
+  onDrag,
+  rotationContainerRef,
+  rotationDeg = 0
 }: VideoPlayerSeekBarProps) {
   const barRef = useRef<HTMLDivElement>(null)
   const seekValueRef = useRef<number | null>(null)
@@ -35,22 +42,38 @@ export default function VideoPlayerSeekBar({
   const clamp = (val: number, min: number, max: number) => Math.max(min, Math.min(max, val))
 
   const updateSeekFromClientX = useCallback(
-    (clientX: number) => {
+    (clientX: number, clientY?: number) => {
       const bar = barRef.current
       if (!bar) return
+
+      // Use the visible bounding box of the bar to compute ratio.
+      // If the bar is visually horizontal, use clientX vs rect.left/width.
+      // If the bar is visually vertical (rotated), use clientY vs rect.top/height
       const rect = bar.getBoundingClientRect()
-      const ratio = rect.width > 0 ? clamp((clientX - rect.left) / rect.width, 0, 1) : 0
+      let ratio = 0
+      if (rect.width >= rect.height) {
+        ratio = rect.width > 0 ? clamp((clientX - rect.left) / rect.width, 0, 1) : 0
+        // If the overall display is rotated left (-90), invert horizontal mapping
+        if (rotationDeg === -90) ratio = 1 - ratio
+      } else if (clientY != null) {
+        // Vertical bar case (likely due to rotation)
+        const raw = rect.height > 0 ? clamp((clientY - rect.top) / rect.height, 0, 1) : 0
+        // For a container rotated 90deg clockwise, top -> left (0%), bottom -> right (100%).
+        // For -90deg (counterclockwise), top -> right (100%), so invert.
+        ratio = rotationDeg === -90 ? 1 - raw : raw
+      }
+
       const nextValue = ratio * (duration || 0)
       seekValueRef.current = nextValue
       setSeekValue(nextValue)
     },
-    [duration]
+    [duration, rotationContainerRef, rotationDeg]
   )
 
   const handleSeekStart = useCallback(
-    (clientX: number) => {
+    (clientX: number, clientY?: number) => {
       setSeeking(true)
-      updateSeekFromClientX(clientX)
+      updateSeekFromClientX(clientX, clientY)
     },
     [updateSeekFromClientX]
   )
@@ -61,7 +84,7 @@ export default function VideoPlayerSeekBar({
   }, [onSeek])
 
   const attachDragListeners = useCallback(() => {
-    const handleMouseMove = (e: MouseEvent) => updateSeekFromClientX(e.clientX)
+    const handleMouseMove = (e: MouseEvent) => updateSeekFromClientX(e.clientX, e.clientY)
     const handleMouseUp = () => {
       handleSeekEnd()
       window.removeEventListener('mousemove', handleMouseMove)
@@ -69,7 +92,7 @@ export default function VideoPlayerSeekBar({
     }
 
     const handleTouchMove = (e: TouchEvent) => {
-      if (e.touches.length > 0) updateSeekFromClientX(e.touches[0].clientX)
+      if (e.touches.length > 0) updateSeekFromClientX(e.touches[0].clientX, e.touches[0].clientY)
       e.preventDefault()
     }
     const handleTouchEnd = () => {
@@ -89,7 +112,7 @@ export default function VideoPlayerSeekBar({
   const handleMouseDown = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       e.preventDefault()
-      handleSeekStart(e.clientX)
+      handleSeekStart(e.clientX, e.clientY)
       attachDragListeners()
     },
     [handleSeekStart, attachDragListeners]
@@ -98,7 +121,7 @@ export default function VideoPlayerSeekBar({
   const handleTouchStart = useCallback(
     (e: React.TouchEvent<HTMLDivElement>) => {
       if (e.touches.length === 0) return
-      handleSeekStart(e.touches[0].clientX)
+      handleSeekStart(e.touches[0].clientX, e.touches[0].clientY)
       attachDragListeners()
       e.preventDefault()
     },

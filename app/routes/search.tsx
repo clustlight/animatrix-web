@@ -1,6 +1,6 @@
 import { useLocation } from 'react-router'
 import { useEffect, useState } from 'react'
-import { SeriesGrid } from '~/components/SeriesGrid'
+import { SeriesGrid } from '../components/lists/SeriesGrid'
 import type { Series } from '../types'
 import { getApiBaseUrl } from '../lib/config'
 

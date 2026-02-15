@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useToast } from './ToastProvider'
-import type { Episode, Season } from '../types'
-import { getApiBaseUrl } from '../lib/config'
+import { useToast } from '../providers/ToastProvider'
+import type { Episode, Season } from '../../types'
+import { getApiBaseUrl } from '../../lib/config'
 import { MdEdit, MdCheck, MdClose } from 'react-icons/md'
 
 type SyoboiTitleSearchItem = {
@@ -518,7 +518,7 @@ export function EditSeasonModal({
       className='fixed inset-0 flex items-center justify-center z-50'
       style={{ background: 'rgba(0,0,0,0.55)' }}
     >
-      <div className='bg-card text-card-foreground border border-border p-5 sm:p-6 rounded shadow-lg flex flex-col w-[96vw] sm:w-[520px] max-w-[96vw] sm:max-w-[520px] min-w-0 h-[90vh] sm:h-[820px] max-h-[90vh] sm:min-h-[180px] overflow-y-auto'>
+      <div className='bg-card text-card-foreground border border-border p-5 sm:p-6 rounded shadow-lg flex flex-col w-[96vw] sm:w-130 max-w-[96vw] sm:max-w-130 min-w-0 h-[90vh] sm:h-205 max-h-[90vh] sm:min-h-45 overflow-y-auto'>
         <h2 className='text-lg font-bold mb-4'>シーズンを編集</h2>
         <div className='mb-1'>
           <div className='flex items-center gap-2'>
@@ -554,7 +554,7 @@ export function EditSeasonModal({
             ) : (
               <>
                 <span
-                  className={`truncate block max-w-[20rem] break-words whitespace-normal text-lg`}
+                  className={`truncate block max-w-[20rem] wrap-break-word whitespace-normal text-lg`}
                 >
                   {title}
                 </span>
@@ -609,12 +609,7 @@ export function EditSeasonModal({
           {syoboiError && <div className='text-red-400 text-xs mb-2'>{syoboiError}</div>}
           <div className='max-h-40 overflow-y-auto mb-2 syoboi-scroll'>
             <style>
-              {`
-                .syoboi-scroll::-webkit-scrollbar { width: 6px; background: var(--scrollbar-track); }
-                .syoboi-scroll::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px; }
-                .syoboi-scroll::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
-                .syoboi-scroll::-webkit-scrollbar-track { background: var(--scrollbar-track); }
-              `}
+              {`\n                .syoboi-scroll::-webkit-scrollbar { width: 6px; background: var(--scrollbar-track); }\n                .syoboi-scroll::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px; }\n                .syoboi-scroll::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }\n                .syoboi-scroll::-webkit-scrollbar-track { background: var(--scrollbar-track); }\n              `}
             </style>
             <ul>
               {syoboiSearched && syoboiResults.length === 0 && !syoboiLoading && (
@@ -684,12 +679,7 @@ export function EditSeasonModal({
         </div>
         <ul className='overflow-y-auto flex-1 mb-2 mt-4 max-h-[70vh]'>
           <style>
-            {`
-              .overflow-y-auto::-webkit-scrollbar { width: 8px; background: var(--scrollbar-track); }
-              .overflow-y-auto::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px; }
-              .overflow-y-auto::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
-              .overflow-y-auto::-webkit-scrollbar-track { background: var(--scrollbar-track); }
-            `}
+            {`\n              .overflow-y-auto::-webkit-scrollbar { width: 8px; background: var(--scrollbar-track); }\n              .overflow-y-auto::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px; }\n              .overflow-y-auto::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }\n              .overflow-y-auto::-webkit-scrollbar-track { background: var(--scrollbar-track); }\n            `}
           </style>
           {episodes.length === 0 ? (
             <li className='text-muted-foreground text-center py-2'>エピソードがありません</li>
@@ -701,7 +691,7 @@ export function EditSeasonModal({
                     <img
                       src={ep.thumbnail_url}
                       alt={ep.title}
-                      className='w-24 h-16 object-cover rounded shadow min-w-[96px] min-h-[64px]'
+                      className='w-24 h-16 object-cover rounded shadow min-w-24 min-h-16'
                       onError={e => (e.currentTarget.style.display = 'none')}
                     />
                   ) : (

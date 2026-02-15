@@ -26,9 +26,9 @@ export function Toast({ message, type }: { message: string; type: 'success' | 'e
       ${type === 'success' ? 'bg-blue-800 text-white' : 'bg-red-800 text-white'}`}
     >
       {type === 'success' ? (
-        <MdInfoOutline size={26} className='flex-shrink-0' />
+        <MdInfoOutline size={26} className='shrink-0' />
       ) : (
-        <MdErrorOutline size={26} className='flex-shrink-0' />
+        <MdErrorOutline size={26} className='shrink-0' />
       )}
       <span className='text-base'>{message}</span>
     </div>
@@ -49,14 +49,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      <div className='fixed bottom-6 right-6 z-[9999] flex flex-col gap-2 items-end pointer-events-none'>
+      <div className='fixed bottom-6 right-6 z-9999 flex flex-col gap-2 items-end pointer-events-none'>
         {toasts.map(t => (
           <div
             key={t.id}
             className={`
               animate-fade-in
               pointer-events-auto
-              min-w-[260px] max-w-lg
+              min-w-65 max-w-lg
             `}
             style={{ opacity: 0.95 }}
           >

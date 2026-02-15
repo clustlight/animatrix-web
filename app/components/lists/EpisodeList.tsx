@@ -1,8 +1,8 @@
 import { useCallback, useState } from 'react'
 import { Link } from 'react-router'
-import type { Episode } from '../types'
+import type { Episode } from '../../types'
 import dayjs from 'dayjs'
-import { NoImage } from './NoImage'
+import { NoImage } from '../images/NoImage'
 
 type EpisodeListProps = {
   episodes: Episode[]
@@ -28,7 +28,7 @@ export function EpisodeList({ episodes }: EpisodeListProps) {
           className='group relative flex items-center gap-4 bg-card/70 rounded-lg px-3 py-3 transition-transform transform hover:-translate-y-0.5 hover:shadow-lg hover:z-10 border border-transparent hover:border-primary/30'
           style={{ maxWidth: '100%' }}
         >
-          <div className='relative w-40 h-24 flex-shrink-0 overflow-hidden rounded-md'>
+          <div className='relative w-40 h-24 shrink-0 overflow-hidden rounded-md'>
             {imgErrorMap[ep.episode_id] || !ep.thumbnail_url ? (
               <NoImage width='w-40' height='h-24' />
             ) : (
@@ -54,10 +54,10 @@ export function EpisodeList({ episodes }: EpisodeListProps) {
           </div>
 
           <div className='flex flex-col min-w-0'>
-            <div className='text-sm sm:text-base font-semibold text-foreground break-words leading-tight'>
+            <div className='text-sm sm:text-base font-semibold text-foreground wrap-break-word leading-tight'>
               {ep.title}
             </div>
-            <div className='text-xs text-muted-foreground mt-1 break-words'>
+            <div className='text-xs text-muted-foreground mt-1 wrap-break-word'>
               {`${dayjs(ep.timestamp).format('YYYY/MM/DD HH:mm:ss (zzz)').replace('Japan Standard Time', 'JST')} (${dayjs(ep.timestamp).fromNow()})`}
             </div>
           </div>

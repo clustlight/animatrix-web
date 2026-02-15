@@ -1,4 +1,4 @@
-import type { Season } from '../types'
+import type { Season } from '../../types'
 import { MdEdit } from 'react-icons/md'
 import { useEffect, useState } from 'react'
 
@@ -100,7 +100,7 @@ export function SeasonTabs({
           return (
             <button
               key={season.season_id}
-              className={`flex items-center gap-3 px-3 py-2 rounded-lg border text-sm cursor-pointer min-w-[180px] transition-colors ${
+              className={`flex items-center gap-3 px-3 py-2 rounded-lg border text-sm cursor-pointer min-w-45 transition-colors ${
                 isActive
                   ? 'bg-accent text-accent-foreground border-border shadow-sm'
                   : 'bg-card/60 text-muted-foreground border-border hover:bg-card'

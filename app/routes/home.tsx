@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getApiBaseUrl } from '../lib/config'
 import type { Episode, Series } from '../types'
-import { SeriesGrid } from '../components/SeriesGrid'
+import { SeriesGrid } from '../components/lists/SeriesGrid'
 
 // Fetch Series information by seriesId
 async function fetchSeries(seriesId: string): Promise<Series | null> {

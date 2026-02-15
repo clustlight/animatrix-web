@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { Series } from '../types'
-import { getApiBaseUrl } from '../lib/config'
-import { NoImage } from './NoImage'
+import type { Series } from '../../types'
+import { getApiBaseUrl } from '../../lib/config'
+import { NoImage } from '../images/NoImage'
 
 const normalize = (str: string) =>
   str.toLowerCase().replace(/[ぁ-ん]/g, s => String.fromCharCode(s.charCodeAt(0) + 0x60))
@@ -11,7 +11,7 @@ type MoveSeasonModalProps = {
   onClose: () => void
   seasonId: string
   onMove: (targetSeriesId: string) => void
-  seasonTitle?: string // 追加: シーズン名を受け取る
+  seasonTitle?: string
 }
 
 export function MoveSeasonModal({ open, onClose, onMove, seasonTitle }: MoveSeasonModalProps) {
@@ -21,7 +21,6 @@ export function MoveSeasonModal({ open, onClose, onMove, seasonTitle }: MoveSeas
   const [imgErrorMap, setImgErrorMap] = useState<{ [id: string]: boolean }>({})
   const [search, setSearch] = useState('')
 
-  // モーダル表示中はbodyスクロール禁止
   useEffect(() => {
     if (open) {
       document.body.style.overflow = 'hidden'
@@ -69,7 +68,7 @@ export function MoveSeasonModal({ open, onClose, onMove, seasonTitle }: MoveSeas
       className='fixed inset-0 flex items-center justify-center z-50'
       style={{ background: 'rgba(0,0,0,0.55)' }}
     >
-      <div className='bg-card text-card-foreground border border-border p-5 sm:p-6 rounded shadow-lg flex flex-col w-[96vw] sm:w-[520px] max-w-[96vw] sm:max-w-[520px] min-w-0 h-[90vh] sm:h-[820px] max-h-[90vh] sm:min-h-[180px]'>
+      <div className='bg-card text-card-foreground border border-border p-5 sm:p-6 rounded shadow-lg flex flex-col w-[96vw] sm:w-130 max-w-[96vw] sm:max-w-130 min-w-0 h-[90vh] sm:h-205 max-h-[90vh] sm:min-h-45'>
         {seasonTitle && (
           <div className='mb-2 text-base text-primary font-semibold text-center'>{seasonTitle}</div>
         )}
@@ -83,12 +82,7 @@ export function MoveSeasonModal({ open, onClose, onMove, seasonTitle }: MoveSeas
         />
         <div className='overflow-y-auto flex-1 mb-2 mt-4 max-h-[70vh]'>
           <style>
-            {`
-              .overflow-y-auto::-webkit-scrollbar { width: 8px; background: var(--scrollbar-track); }
-              .overflow-y-auto::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px; }
-              .overflow-y-auto::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
-              .overflow-y-auto::-webkit-scrollbar-track { background: var(--scrollbar-track); }
-            `}
+            {`\n              .overflow-y-auto::-webkit-scrollbar { width: 8px; background: var(--scrollbar-track); }\n              .overflow-y-auto::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px; }\n              .overflow-y-auto::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }\n              .overflow-y-auto::-webkit-scrollbar-track { background: var(--scrollbar-track); }\n            `}
           </style>
           {loading ? (
             <div>読み込み中...</div>

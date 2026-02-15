@@ -33,7 +33,7 @@ export function ShareDialog({
   return (
     <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/60'>
       <div
-        className='bg-card text-card-foreground border border-border rounded shadow-lg p-6 min-w-[420px] max-w-[98vw] relative'
+        className='bg-card text-card-foreground border border-border rounded shadow-lg p-6 min-w-105 max-w-[98vw] relative'
         style={{ boxShadow: '0 8px 32px 0 rgba(0,0,0,0.45)', width: '480px' }}
       >
         <button
