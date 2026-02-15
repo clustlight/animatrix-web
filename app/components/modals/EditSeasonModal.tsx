@@ -518,7 +518,7 @@ export function EditSeasonModal({
       className='fixed inset-0 flex items-center justify-center z-50'
       style={{ background: 'rgba(0,0,0,0.55)' }}
     >
-      <div className='bg-card text-card-foreground border border-border p-5 sm:p-6 rounded shadow-lg flex flex-col w-[96vw] sm:w-[520px] max-w-[96vw] sm:max-w-[520px] min-w-0 h-[90vh] sm:h-[820px] max-h-[90vh] sm:min-h-[180px] overflow-y-auto'>
+      <div className='bg-card text-card-foreground border border-border p-5 sm:p-6 rounded shadow-lg flex flex-col w-[96vw] sm:w-130 max-w-[96vw] sm:max-w-130 min-w-0 h-[90vh] sm:h-205 max-h-[90vh] sm:min-h-45 overflow-y-auto'>
         <h2 className='text-lg font-bold mb-4'>シーズンを編集</h2>
         <div className='mb-1'>
           <div className='flex items-center gap-2'>
@@ -554,7 +554,7 @@ export function EditSeasonModal({
             ) : (
               <>
                 <span
-                  className={`truncate block max-w-[20rem] break-words whitespace-normal text-lg`}
+                  className={`truncate block max-w-[20rem] wrap-break-word whitespace-normal text-lg`}
                 >
                   {title}
                 </span>
@@ -691,7 +691,7 @@ export function EditSeasonModal({
                     <img
                       src={ep.thumbnail_url}
                       alt={ep.title}
-                      className='w-24 h-16 object-cover rounded shadow min-w-[96px] min-h-[64px]'
+                      className='w-24 h-16 object-cover rounded shadow min-w-24 min-h-16'
                       onError={e => (e.currentTarget.style.display = 'none')}
                     />
                   ) : (
