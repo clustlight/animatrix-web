@@ -11,7 +11,7 @@ import { useFullscreen } from './useFullscreen'
 import { usePersistedVolume } from './usePersistedVolume'
 import { useVideoPlayerShortcuts } from './useVideoPlayerShortcuts'
 import { useInputFocus } from './useInputFocus'
-import { ActionOverlay } from './VIdeoPlayerActionOverlay'
+import { ActionOverlay } from './VideoPlayerActionOverlay'
 
 // Video player component
 type VideoPlayerProps = {
@@ -170,6 +170,9 @@ export default function VideoPlayer({
   // Per-area touch handlers for reliable double-tap detection
   const handleLeftAreaTouchEnd = (e: React.TouchEvent) => {
     if (!isMobile) return
+    // Prevent the touch from bubbling to the rotated container which would toggle UI
+    e.preventDefault()
+    e.stopPropagation()
     const t = e.changedTouches[0]
     const now = Date.now()
     const dt = now - lastLeftTapTime.current
@@ -178,7 +181,8 @@ export default function VideoPlayer({
     const isDouble = dt > 0 && dt < 350 && dx < 40 && dy < 40
     if (isDouble) {
       handleSeekRelative(-10)
-      setActionIcon(<MdReplay10 size={48} />)
+      // Use side overlay only; clear generic action icon/text to avoid flicker
+      setActionIcon(null)
       setActionText(null)
       setActionSide('left')
       lastTapWasDouble.current = true
@@ -191,6 +195,9 @@ export default function VideoPlayer({
 
   const handleRightAreaTouchEnd = (e: React.TouchEvent) => {
     if (!isMobile) return
+    // Prevent the touch from bubbling to the rotated container which would toggle UI
+    e.preventDefault()
+    e.stopPropagation()
     const t = e.changedTouches[0]
     const now = Date.now()
     const dt = now - lastRightTapTime.current
@@ -199,7 +206,8 @@ export default function VideoPlayer({
     const isDouble = dt > 0 && dt < 350 && dx < 40 && dy < 40
     if (isDouble) {
       handleSeekRelative(10)
-      setActionIcon(<MdForward10 size={48} />)
+      // Use side overlay only; clear generic action icon/text to avoid flicker
+      setActionIcon(null)
       setActionText(null)
       setActionSide('right')
       lastTapWasDouble.current = true
@@ -212,7 +220,7 @@ export default function VideoPlayer({
 
   // Handle single-tap on rotated container to show mobile UI (ignore when a double-tap just occurred)
   const handleRotatedContainerTouchEnd = (e: React.TouchEvent) => {
-    if (!isMobile || !isFullscreen) return
+    if (!isMobile) return
     if (lastTapWasDouble.current) return
     // If the touch was on an interactive element (button/input/etc), ignore here
     const t = e.changedTouches[0]
@@ -236,6 +244,38 @@ export default function VideoPlayer({
     // suppress the next click to avoid accidental play/pause toggle
     suppressNextClick.current = true
     window.setTimeout(() => (suppressNextClick.current = false), 350)
+  }
+
+  // Touch handlers for enlarged seekbar hit area (mobile fullscreen)
+  const handleSeekbarTouch = (e: React.TouchEvent) => {
+    if (!isMobile || !isFullscreen) return
+    const t = e.changedTouches[0]
+    const container = e.currentTarget as HTMLElement
+    // find the visible seekbar visual element
+    const visual = container.querySelector('[data-player-seekbar-visual]') as HTMLElement | null
+    if (!visual || duration <= 0) return
+
+    const rect = visual.getBoundingClientRect()
+    // compute ratio within visual bounds (clamp 0..1)
+    const x = Math.max(rect.left, Math.min(rect.right, t.clientX))
+    const ratio = rect.width > 0 ? (x - rect.left) / rect.width : 0
+    const time = Math.max(0, Math.min(duration, ratio * duration))
+
+    if (e.type === 'touchstart' || e.type === 'touchmove') {
+      // show UI and keep it visible while interacting
+      setMobileUIVisible(true)
+      clearMobileHide()
+      // live seek as user drags
+      handleSeek(time)
+    } else if (e.type === 'touchend') {
+      lastSeekDragEndTime.current = Date.now()
+      // finalize seek
+      handleSeek(time)
+      // schedule hide and suppress following click
+      scheduleMobileHide()
+      suppressNextClick.current = true
+      window.setTimeout(() => (suppressNextClick.current = false), 350)
+    }
   }
 
   // Show/hide UI
@@ -406,24 +446,27 @@ export default function VideoPlayer({
       {/* Video */}
       {/* Video wrapper - apply rotation in fullscreen on mobile only */}
       <div className='absolute inset-0 flex items-center justify-center overflow-hidden'>
-        {isFullscreen && isMobile ? (
-          // Fill screen with rotated video: swap viewport dims and center
+        {isMobile ? (
+          // Mobile layout (covers both fullscreen and non-fullscreen):
+          // when fullscreen rotate and swap viewport dims; otherwise fill container normally
           <div
             style={{
               position: 'absolute',
-              left: '50%',
-              top: '50%',
-              width: '100vh',
-              height: '100vw',
-              transform: `translate(-50%, -50%) rotate(${rotationDeg}deg)`,
-              transformOrigin: 'center',
+              left: isFullscreen ? '50%' : '0%',
+              top: isFullscreen ? '50%' : '0%',
+              width: isFullscreen ? '100vh' : '100%',
+              height: isFullscreen ? '100vw' : '100%',
+              transform: isFullscreen
+                ? `translate(-50%, -50%) rotate(${rotationDeg}deg)`
+                : undefined,
+              transformOrigin: isFullscreen ? 'center' : undefined,
               overflow: 'hidden'
             }}
-            ref={rotatedContainerRef}
+            ref={isFullscreen ? rotatedContainerRef : undefined}
             onTouchEnd={handleRotatedContainerTouchEnd}
           >
             {/* Title in fullscreen (mobile rotated container) */}
-            {title && mobileUIVisible && (
+            {title && mobileUIVisible && isFullscreen && (
               <div className='absolute left-4 top-4 z-60 pointer-events-none'>
                 <div
                   className='text-white text-sm font-semibold bg-black/60 backdrop-blur-sm px-3 py-1 rounded-lg truncate'
@@ -441,8 +484,11 @@ export default function VideoPlayer({
               </div>
             )}
             {/* Rotate toggle (top-right of screen in fullscreen) */}
-            {mobileUIVisible && (
-              <div className='absolute right-4 top-4 z-60 pointer-events-auto'>
+            {mobileUIVisible && isFullscreen && (
+              <div
+                className='absolute right-4 top-4 z-70 pointer-events-auto'
+                style={{ zIndex: 80 }}
+              >
                 <button
                   type='button'
                   aria-label='Toggle rotation'
@@ -490,9 +536,17 @@ export default function VideoPlayer({
                 <div className='flex flex-col items-center'>
                   <div
                     className='bg-black/60 text-white flex items-center justify-center'
-                    style={{ width: 140, height: 140, borderRadius: '70px' }}
+                    style={{
+                      width: isFullscreen ? 140 : 64,
+                      height: isFullscreen ? 140 : 64,
+                      borderRadius: isFullscreen ? '70px' : '32px'
+                    }}
                   >
-                    {actionSide === 'left' ? <MdReplay10 size={48} /> : <MdForward10 size={48} />}
+                    {actionSide === 'left' ? (
+                      <MdReplay10 size={isFullscreen ? 48 : 24} />
+                    ) : (
+                      <MdForward10 size={isFullscreen ? 48 : 24} />
+                    )}
                   </div>
                 </div>
               </div>
@@ -542,16 +596,26 @@ export default function VideoPlayer({
               <div
                 data-player-seekbar
                 className='absolute'
-                // provide more horizontal breathing room; keep extra right padding in fullscreen
+                // provide an enlarged hit area vertically but keep visual unchanged
                 style={{
-                  left: isFullscreen ? 30 : 20,
-                  right: isFullscreen ? 80 : 20,
-                  // move slightly closer to bottom edge
-                  bottom: isFullscreen ? 20 : 5,
-                  zIndex: 60
+                  left: isFullscreen ? 30 : 15,
+                  right: isFullscreen ? 80 : 80,
+                  // keep the same bottom anchor; increase container height for larger hit area
+                  bottom: isFullscreen ? 20 : 15,
+                  height: 72,
+                  zIndex: 60,
+                  touchAction: 'none'
                 }}
+                onTouchStart={handleSeekbarTouch}
+                onTouchMove={handleSeekbarTouch}
+                onTouchEnd={handleSeekbarTouch}
               >
-                <div className='bg-black/40 backdrop-blur-sm rounded-xl px-3 py-2'>
+                {/* visible seekbar stays visually identical; anchor it to bottom */}
+                <div
+                  data-player-seekbar-visual
+                  className='bg-black/40 backdrop-blur-sm rounded-xl px-3 py-2'
+                  style={{ position: 'absolute', left: 0, right: 0, bottom: 0 }}
+                >
                   <div className='flex items-center gap-3'>
                     <div className='text-white text-sm select-none' style={{ minWidth: 48 }}>
                       {formatTimeLabel(currentTime, duration >= 3600)}
@@ -608,7 +672,10 @@ export default function VideoPlayer({
             )}
             {/* Exit fullscreen button positioned at rotated container bottom-right */}
             {mobileUIVisible && (
-              <div className='absolute right-4 bottom-4 z-50 pointer-events-auto'>
+              <div
+                className='absolute right-4 bottom-4 z-70 pointer-events-auto'
+                style={{ zIndex: 80 }}
+              >
                 <button
                   type='button'
                   aria-label='Exit fullscreen'
@@ -660,29 +727,9 @@ export default function VideoPlayer({
         )}
       </div>
       {/* Action overlay and centered play/pause are rendered inside rotated container when in mobile fullscreen */}
-      {/* Central play/pause for mobile when NOT fullscreen */}
-      {isMobile && !isFullscreen && (
-        <div className='absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-auto'>
-          <button
-            onClick={handleCenterButtonClick}
-            aria-label={playing ? 'Pause' : 'Play'}
-            className='bg-black/60 text-white p-4 rounded-full shadow-lg'
-            type='button'
-          >
-            {playing ? (
-              <svg viewBox='0 0 24 24' width='48' height='48' fill='currentColor'>
-                <path d='M6 19h4V5H6v14zm8-14v14h4V5h-4z' />
-              </svg>
-            ) : (
-              <svg viewBox='0 0 24 24' width='48' height='48' fill='currentColor'>
-                <path d='M8 5v14l11-7z' />
-              </svg>
-            )}
-          </button>
-        </div>
-      )}
+
       {/* Controls */}
-      {!(isFullscreen && isMobile) && showUI && isUIVisible && (
+      {!isMobile && showUI && isUIVisible && (
         <VideoPlayerControls
           playing={playing}
           onPlayPause={handlePlayPause}
