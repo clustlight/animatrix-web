@@ -51,16 +51,20 @@ export default function VideoPlayerSeekBar({
       // If the bar is visually vertical (rotated), use clientY vs rect.top/height
       const rect = bar.getBoundingClientRect()
       let ratio = 0
+      // Only consider rotation-based inversion when a rotation container is actually provided
+      const isRotated =
+        !!(rotationContainerRef && rotationContainerRef.current) && Math.abs(rotationDeg) === 90
+
       if (rect.width >= rect.height) {
         ratio = rect.width > 0 ? clamp((clientX - rect.left) / rect.width, 0, 1) : 0
-        // If the overall display is rotated left (-90), invert horizontal mapping
-        if (rotationDeg === -90) ratio = 1 - ratio
+        // Invert horizontal mapping only when the parent/container is rotated
+        if (isRotated && rotationDeg === -90) ratio = 1 - ratio
       } else if (clientY != null) {
         // Vertical bar case (likely due to rotation)
         const raw = rect.height > 0 ? clamp((clientY - rect.top) / rect.height, 0, 1) : 0
         // For a container rotated 90deg clockwise, top -> left (0%), bottom -> right (100%).
-        // For -90deg (counterclockwise), top -> right (100%), so invert.
-        ratio = rotationDeg === -90 ? 1 - raw : raw
+        // For -90deg (counterclockwise), top -> right (100%), so invert when rotated.
+        ratio = isRotated && rotationDeg === -90 ? 1 - raw : raw
       }
 
       const nextValue = ratio * (duration || 0)
