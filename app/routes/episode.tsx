@@ -321,6 +321,8 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
               <VideoPlayer
                 key={episodeData.episode_id}
                 url={episodeData.video_url}
+                title={episodeData.title}
+                season={seasonData.season_title}
                 onEnded={handleVideoEnded}
                 autoPlay={autoPlay}
                 initialSeek={initialSeek ?? undefined}

@@ -326,12 +326,25 @@ export default function VideoPlayerControls({
                 onPlaybackRateChange={onPlaybackRateChange}
               />
             )}
-            <IconButton
-              label={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
-              onClick={onFullscreen}
-            >
-              {isFullscreen ? <MdFullscreenExit size={28} /> : <MdFullscreen size={28} />}
-            </IconButton>
+            {isMobile ? (
+              <button
+                tabIndex={-1}
+                aria-label={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+                onClick={onFullscreen}
+                type='button'
+                className='p-2 rounded bg-black/60 backdrop-blur-sm text-white flex items-center justify-center hover:bg-black/70'
+                style={{ minWidth: 44 }}
+              >
+                {isFullscreen ? <MdFullscreenExit size={28} /> : <MdFullscreen size={28} />}
+              </button>
+            ) : (
+              <IconButton
+                label={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+                onClick={onFullscreen}
+              >
+                {isFullscreen ? <MdFullscreenExit size={28} /> : <MdFullscreen size={28} />}
+              </IconButton>
+            )}
           </div>
         </div>
       </div>
