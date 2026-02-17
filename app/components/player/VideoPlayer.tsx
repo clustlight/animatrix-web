@@ -10,6 +10,16 @@ import { usePersistedVolume } from './usePersistedVolume'
 import { useVideoPlayerShortcuts } from './useVideoPlayerShortcuts'
 import { useInputFocus } from './useInputFocus'
 
+function formatTimeLabel(sec: number, showHours = false) {
+  const h = Math.floor(sec / 3600)
+  const m = Math.floor((sec % 3600) / 60)
+  const s = Math.floor(sec % 60)
+  if (showHours) {
+    return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+  }
+  return `${m}:${s.toString().padStart(2, '0')}`
+}
+
 // Video player component
 type VideoPlayerProps = {
   url: string
@@ -36,16 +46,7 @@ export default function VideoPlayer({
   season,
   startFullscreen = false
 }: VideoPlayerProps) {
-  // Format seconds to MM:SS or HH:MM:SS when requested
-  const formatTimeLabel = (sec: number, showHours = false) => {
-    const h = Math.floor(sec / 3600)
-    const m = Math.floor((sec % 3600) / 60)
-    const s = Math.floor(sec % 60)
-    if (showHours) {
-      return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
-    }
-    return `${m}:${s.toString().padStart(2, '0')}`
-  }
+  // formatTimeLabel moved to module scope
   const playerRef = useRef<ReactPlayer>(null as unknown as ReactPlayer)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const rotatedContainerRef = useRef<HTMLDivElement | null>(null)
@@ -61,8 +62,7 @@ export default function VideoPlayer({
     }, 400)
 
     // briefly suppress click-to-toggle-play that can follow touch
-    suppressNextClick.current = true
-    window.setTimeout(() => (suppressNextClick.current = false), 350)
+    suppressClickTemporary()
 
     setRotationDeg(d => (d === 90 ? -90 : 90))
   }
@@ -106,15 +106,25 @@ export default function VideoPlayer({
   const lastTapX = useRef<number>(0)
   const lastTapY = useRef<number>(0)
   const lastTapWasDouble = useRef<boolean>(false)
-  const lastLeftTapTime = useRef<number>(0)
-  const lastRightTapTime = useRef<number>(0)
+  // per-side tap timing/timers
+  const sideTapTime = useRef<{ left: number; right: number }>({ left: 0, right: 0 })
+  const sideSingleTapTimer = useRef<{ left: number | null; right: number | null }>({
+    left: null,
+    right: null
+  })
   const hideUITimer = useRef<NodeJS.Timeout | null>(null)
   const lastSeekDragEndTime = useRef<number>(0)
   // Suppress next click briefly after certain touch interactions (seek end / UI toggle)
   const suppressNextClick = useRef<boolean>(false)
-  // Single-tap timers for left/right areas (we delay immediate toggle so a double-tap can cancel it)
-  const leftSingleTapTimer = useRef<number | null>(null)
-  const rightSingleTapTimer = useRef<number | null>(null)
+  const suppressClickTemporary = (ms = 350) => {
+    suppressNextClick.current = true
+    window.setTimeout(() => (suppressNextClick.current = false), ms)
+  }
+
+  // Track whether the user is actively dragging/seeking (set by SeekBar via onDrag)
+  const isUserSeekingRef = useRef<boolean>(false)
+  // Prevent duplicate onEnded handling within short window
+  const lastEndedTime = useRef<number>(0)
 
   // Custom hooks
   const { isFullscreen, toggleFullscreen } = useFullscreen(
@@ -133,6 +143,19 @@ export default function VideoPlayer({
   // guard for rotation transitions (toggleRotation can cause layout/transform changes that generate stray touch events)
   const rotationTransitioning = useRef(false)
   const rotationTransitionTimer = useRef<number | null>(null)
+
+  // Track the outer (expanded) seekbar hit-area interaction so we can prefer the
+  // last position that was *inside* the visible seekbar when finalizing. This
+  // prevents jumps when layout/rotation changes or the finger leaves vertically.
+  const seekbarLastInsideValueRef = useRef<number | null>(null)
+  const seekbarPointerInsideRef = useRef<boolean>(true)
+  const seekbarTouchActiveRef = useRef<boolean>(false)
+  // Whether the touch *started* inside the visible bar. If the touch never
+  // entered the visible bar during its lifetime, we will not perform a final
+  // seek to avoid accidental jumps from background taps.
+  const seekbarStartedInsideRef = useRef<boolean>(false)
+  const seekbarLastRotationDegRef = useRef<number>(rotationDeg)
+  const seekbarRotationChangedRef = useRef<boolean>(false)
 
   const handleToggleFullscreen = () => {
     // capture current time before toggling so the new player can resume
@@ -171,21 +194,15 @@ export default function VideoPlayer({
   const handleSeek = (sec: number) => {
     // suppress seeks during rotation transition (prevents stray seeks when rotating)
     if (rotationTransitioning.current) {
-      // optional debug: enable by setting window.__PLAYER_DEBUG_SEEK = true in console
-      const _win = window as unknown as { __PLAYER_DEBUG_SEEK?: boolean }
-      if (_win.__PLAYER_DEBUG_SEEK)
-        console.debug('[VideoPlayer] suppressed seek during rotation', sec)
       return
     }
+
     playerRef.current?.seekTo(sec, 'seconds')
   }
 
   const handleSeekRelative = (delta: number) => {
     // block relative seeks while rotating
     if (rotationTransitioning.current) {
-      const _win2 = window as unknown as { __PLAYER_DEBUG_SEEK?: boolean }
-      if (_win2.__PLAYER_DEBUG_SEEK)
-        console.debug('[VideoPlayer] suppressed relative seek during rotation', delta)
       return
     }
 
@@ -225,15 +242,14 @@ export default function VideoPlayer({
   }
 
   // Per-area touch handlers for reliable double-tap detection
-  const handleLeftAreaTouchEnd = (e: React.TouchEvent) => {
+  const handleEdgeTouchEnd = (side: 'left' | 'right', e: React.TouchEvent) => {
     if (!isMobile) return
-    // Do not early-return for fullscreen/rotation transitions — allow deliberate double-tap seeks
     // Prevent the touch from bubbling to the rotated container which would toggle UI
     e.preventDefault()
     e.stopPropagation()
     const t = e.changedTouches[0]
     const now = Date.now()
-    const dt = now - lastLeftTapTime.current
+    const dt = now - sideTapTime.current[side]
     const dx = Math.abs(t.clientX - lastTapX.current)
     const dy = Math.abs(t.clientY - lastTapY.current)
     const isDouble = dt > 0 && dt < 350 && dx < 40 && dy < 40
@@ -243,23 +259,24 @@ export default function VideoPlayer({
 
     if (isDouble) {
       // Cancel any pending single-tap action for this side
-      if (leftSingleTapTimer.current) {
-        clearTimeout(leftSingleTapTimer.current)
-        leftSingleTapTimer.current = null
+      const timer = sideSingleTapTimer.current[side]
+      if (timer) {
+        clearTimeout(timer)
+        sideSingleTapTimer.current[side] = null
       }
 
-      handleSeekRelative(-10)
+      handleSeekRelative(side === 'left' ? -10 : 10)
       // Use side overlay only; clear generic action icon/text to avoid flicker
       setActionIcon(null)
       setActionText(null)
-      setActionSide('left')
+      setActionSide(side)
       lastTapWasDouble.current = true
       window.setTimeout(() => (lastTapWasDouble.current = false), 400)
     } else {
-      // schedule single-tap UI toggle (will be canceled if a second tap follows)
-      if (leftSingleTapTimer.current) clearTimeout(leftSingleTapTimer.current)
-      leftSingleTapTimer.current = window.setTimeout(() => {
-        leftSingleTapTimer.current = null
+      const existingTimer = sideSingleTapTimer.current[side]
+      if (existingTimer) clearTimeout(existingTimer)
+      sideSingleTapTimer.current[side] = window.setTimeout(() => {
+        sideSingleTapTimer.current[side] = null
         setMobileUIVisible(prev => {
           const next = !prev
           if (next) scheduleMobileHide()
@@ -267,67 +284,17 @@ export default function VideoPlayer({
           return next
         })
         // suppress the following click to avoid accidental play/pause
-        suppressNextClick.current = true
-        window.setTimeout(() => (suppressNextClick.current = false), 350)
+        suppressClickTemporary()
       }, 300)
     }
 
-    lastLeftTapTime.current = now
+    sideTapTime.current[side] = now
     lastTapX.current = t.clientX
     lastTapY.current = t.clientY
   }
 
-  const handleRightAreaTouchEnd = (e: React.TouchEvent) => {
-    if (!isMobile) return
-    // Do not early-return for fullscreen/rotation transitions — allow deliberate double-tap seeks
-    // Prevent the touch from bubbling to the rotated container which would toggle UI
-    e.preventDefault()
-    e.stopPropagation()
-    const t = e.changedTouches[0]
-    const now = Date.now()
-    const dt = now - lastRightTapTime.current
-    const dx = Math.abs(t.clientX - lastTapX.current)
-    const dy = Math.abs(t.clientY - lastTapY.current)
-    const isDouble = dt > 0 && dt < 350 && dx < 40 && dy < 40
-
-    // If we're mid-transition, ignore single taps but still allow double-tap seeks
-    if ((fullscreenTransitioning.current || rotationTransitioning.current) && !isDouble) return
-
-    if (isDouble) {
-      // Cancel any pending single-tap action for this side
-      if (rightSingleTapTimer.current) {
-        clearTimeout(rightSingleTapTimer.current)
-        rightSingleTapTimer.current = null
-      }
-
-      handleSeekRelative(10)
-      // Use side overlay only; clear generic action icon/text to avoid flicker
-      setActionIcon(null)
-      setActionText(null)
-      setActionSide('right')
-      lastTapWasDouble.current = true
-      window.setTimeout(() => (lastTapWasDouble.current = false), 400)
-    } else {
-      // schedule single-tap UI toggle (will be canceled if a second tap follows)
-      if (rightSingleTapTimer.current) clearTimeout(rightSingleTapTimer.current)
-      rightSingleTapTimer.current = window.setTimeout(() => {
-        rightSingleTapTimer.current = null
-        setMobileUIVisible(prev => {
-          const next = !prev
-          if (next) scheduleMobileHide()
-          else clearMobileHide()
-          return next
-        })
-        // suppress the following click to avoid accidental play/pause
-        suppressNextClick.current = true
-        window.setTimeout(() => (suppressNextClick.current = false), 350)
-      }, 300)
-    }
-
-    lastRightTapTime.current = now
-    lastTapX.current = t.clientX
-    lastTapY.current = t.clientY
-  }
+  const handleLeftAreaTouchEnd = (e: React.TouchEvent) => handleEdgeTouchEnd('left', e)
+  const handleRightAreaTouchEnd = (e: React.TouchEvent) => handleEdgeTouchEnd('right', e)
 
   // Handle single-tap on rotated container to show mobile UI (ignore when a double-tap just occurred)
   const handleRotatedContainerTouchEnd = (e: React.TouchEvent) => {
@@ -354,40 +321,154 @@ export default function VideoPlayer({
     }
 
     // suppress the next click to avoid accidental play/pause toggle
-    suppressNextClick.current = true
-    window.setTimeout(() => (suppressNextClick.current = false), 350)
+    suppressClickTemporary()
   }
 
   // Touch handlers for enlarged seekbar hit area (mobile fullscreen)
   const handleSeekbarTouch = (e: React.TouchEvent) => {
     if (fullscreenTransitioning.current || rotationTransitioning.current) return
     if (!isMobile || !isFullscreen) return
+
+    // If the touch started inside the inner seekbar, let the inner component
+    // handle drag/end (prevents duplicate/conflicting seeks).
+    const startTarget = (e.target as Element) || null
+    if (startTarget && startTarget.closest('[data-player-seekbar-inner]')) return
+
     const t = e.changedTouches[0]
     const container = e.currentTarget as HTMLElement
     // find the visible seekbar visual element
     const visual = container.querySelector('[data-player-seekbar-visual]') as HTMLElement | null
     if (!visual || duration <= 0) return
 
-    const rect = visual.getBoundingClientRect()
-    // compute ratio within visual bounds (clamp 0..1)
-    const x = Math.max(rect.left, Math.min(rect.right, t.clientX))
-    const ratio = rect.width > 0 ? (x - rect.left) / rect.width : 0
+    // initialize per-touch tracking on start
+    if (e.type === 'touchstart') {
+      seekbarTouchActiveRef.current = true
+      seekbarLastRotationDegRef.current = rotationDeg
+      seekbarRotationChangedRef.current = false
+      seekbarLastInsideValueRef.current = null
+      seekbarPointerInsideRef.current = true
+
+      // Use the actual track (innerBar) for "started inside" checks so that
+      // padding/labels in the visual container are ignored.
+      const innerBarStart = visual.querySelector(
+        '[data-player-seekbar-inner]'
+      ) as HTMLElement | null
+      const startRect = innerBarStart
+        ? innerBarStart.getBoundingClientRect()
+        : visual.getBoundingClientRect()
+      const startInsideX = t.clientX >= startRect.left && t.clientX <= startRect.right
+      const startInsideY = t.clientY >= startRect.top && t.clientY <= startRect.bottom
+      seekbarStartedInsideRef.current = startInsideX && startInsideY
+
+      // If it started inside the real track, perform an immediate live seek so
+      // the user sees feedback. Use vertical/horizontal mapping consistent with
+      // the inner seek bar component.
+      if (seekbarStartedInsideRef.current) {
+        const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v))
+        const isVerticalStart = startRect.height > startRect.width
+        const startRatio = isVerticalStart
+          ? (() => {
+              const raw =
+                startRect.height > 0
+                  ? clamp((t.clientY - startRect.top) / startRect.height, 0, 1)
+                  : 0
+              return Math.abs(rotationDeg) === 90 && rotationDeg === -90 ? 1 - raw : raw
+            })()
+          : (() => {
+              const sx = clamp(t.clientX, startRect.left, startRect.right)
+              return startRect.width > 0 ? clamp((sx - startRect.left) / startRect.width, 0, 1) : 0
+            })()
+        const stime = Math.max(0, Math.min(duration, startRatio * duration))
+        seekbarLastInsideValueRef.current = stime
+        handleSeek(stime)
+      }
+    } else {
+      // detect rotation/layout change that happened during the active touch
+      if (seekbarLastRotationDegRef.current !== rotationDeg) {
+        seekbarRotationChangedRef.current = true
+        seekbarLastRotationDegRef.current = rotationDeg
+      }
+    }
+
+    // Prefer the actual seek track element if present — the visual container
+    // includes labels/padding and should not be used for coordinate mapping.
+    const innerBar = visual.querySelector('[data-player-seekbar-inner]') as HTMLElement | null
+    const rect = innerBar ? innerBar.getBoundingClientRect() : visual.getBoundingClientRect()
+
+    const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v))
+    const isVertical = rect.height > rect.width
+    let ratio = 0
+
+    if (!isVertical) {
+      const x = clamp(t.clientX, rect.left, rect.right)
+      ratio = rect.width > 0 ? clamp((x - rect.left) / rect.width, 0, 1) : 0
+      if (Math.abs(rotationDeg) === 90 && rotationDeg === -90) ratio = 1 - ratio
+    } else {
+      const raw = rect.height > 0 ? clamp((t.clientY - rect.top) / rect.height, 0, 1) : 0
+      ratio = Math.abs(rotationDeg) === 90 && rotationDeg === -90 ? 1 - raw : raw
+    }
+
     const time = Math.max(0, Math.min(duration, ratio * duration))
+
+    // track whether the pointer was inside the actual track on this update
+    const insideX = t.clientX >= rect.left && t.clientX <= rect.right
+    const insideY = t.clientY >= rect.top && t.clientY <= rect.bottom
+    seekbarPointerInsideRef.current = insideY
+    if (insideX && insideY) seekbarLastInsideValueRef.current = time
 
     if (e.type === 'touchstart' || e.type === 'touchmove') {
       // show UI and keep it visible while interacting
       setMobileUIVisible(true)
       clearMobileHide()
-      // live seek as user drags
-      handleSeek(time)
+      // Only perform live seeks when the pointer is vertically inside the
+      // visible bar. If the user drags above/below the bar we should not
+      // update playback continuously (prevents vertical-drift); final
+      // seek on touchend will prefer the last "inside" value.
+      if (insideY) {
+        handleSeek(time)
+      }
     } else if (e.type === 'touchend') {
       lastSeekDragEndTime.current = Date.now()
+
+      // If the touch never entered the visible bar and we have no recorded
+      // inside value, treat this as a background tap — do not perform a seek.
+      if (!seekbarStartedInsideRef.current && seekbarLastInsideValueRef.current == null) {
+        // reset tracking and exit without seeking
+        seekbarLastInsideValueRef.current = null
+        seekbarPointerInsideRef.current = true
+        seekbarTouchActiveRef.current = false
+        seekbarRotationChangedRef.current = false
+        seekbarStartedInsideRef.current = false
+        // still schedule UI hide/suppress click to keep UX consistent
+        scheduleMobileHide()
+        suppressClickTemporary()
+        return
+      }
+
+      // Prefer the last "inside" value if the pointer left vertically or a
+      // rotation/layout change happened while dragging — this avoids jumping
+      // to 0 or duration when the visual's bounding box moved under the touch.
+      let finalTime = time
+      if (
+        (seekbarRotationChangedRef.current || !seekbarPointerInsideRef.current) &&
+        seekbarLastInsideValueRef.current != null
+      ) {
+        finalTime = seekbarLastInsideValueRef.current
+      }
+
       // finalize seek
-      handleSeek(time)
+      handleSeek(finalTime)
+
       // schedule hide and suppress following click
       scheduleMobileHide()
-      suppressNextClick.current = true
-      window.setTimeout(() => (suppressNextClick.current = false), 350)
+      suppressClickTemporary()
+
+      // reset tracking
+      seekbarLastInsideValueRef.current = null
+      seekbarPointerInsideRef.current = true
+      seekbarTouchActiveRef.current = false
+      seekbarRotationChangedRef.current = false
+      seekbarStartedInsideRef.current = false
     }
   }
 
@@ -431,8 +512,8 @@ export default function VideoPlayer({
     return () => {
       if (fullscreenTransitionTimer.current) clearTimeout(fullscreenTransitionTimer.current)
       if (rotationTransitionTimer.current) clearTimeout(rotationTransitionTimer.current)
-      if (leftSingleTapTimer.current) clearTimeout(leftSingleTapTimer.current)
-      if (rightSingleTapTimer.current) clearTimeout(rightSingleTapTimer.current)
+      if (sideSingleTapTimer.current.left) clearTimeout(sideSingleTapTimer.current.left)
+      if (sideSingleTapTimer.current.right) clearTimeout(sideSingleTapTimer.current.right)
       if (mobileHideTimer.current) clearTimeout(mobileHideTimer.current as unknown as number)
       if (hideUITimer.current) clearTimeout(hideUITimer.current as unknown as number)
     }
@@ -513,10 +594,18 @@ export default function VideoPlayer({
     return () => mq.removeEventListener?.('change', onChange)
   }, [])
 
-  // Callback on video end
-  const handleEnded = () => {
+  // Callback on video end (stable reference)
+  const handleEnded = useCallback(() => {
+    // If the user is actively seeking, ignore onEnded events until they release.
+    if (isUserSeekingRef.current) return
+
+    // prevent duplicate handling
+    const now = Date.now()
+    if (now - lastEndedTime.current < 1000) return
+    lastEndedTime.current = now
+
     if (onEnded) onEnded({ keepFullscreen: isFullscreen && isMobile })
-  }
+  }, [isFullscreen, isMobile, onEnded])
 
   useEffect(() => {
     setPlaying(autoPlay)
@@ -525,6 +614,32 @@ export default function VideoPlayer({
   useEffect(() => {
     setHasSeeked(false)
   }, [url, initialSeek])
+
+  // Reset transient / non-video UI state when the source URL (episode) changes.
+  // VideoPlayer intentionally stays mounted when switching episodes so we must
+  // explicitly clear any UI that should not persist across episodes.
+  useEffect(() => {
+    setIsReady(false)
+    setAspectRatio(null)
+    setCurrentTime(0)
+
+    // Clear transient UI overlays and ensure the UI is visible for the new episode
+    setActionIcon(null)
+    setActionText(null)
+    setActionSide(null)
+    setMobileUIVisible(true)
+    clearMobileHide()
+    setShowUI(true)
+
+    // Reset pending/interaction refs so the new episode starts clean
+    pendingSeekOnReady.current = null
+    isUserSeekingRef.current = false
+    seekbarLastInsideValueRef.current = null
+    seekbarPointerInsideRef.current = true
+    seekbarTouchActiveRef.current = false
+    seekbarStartedInsideRef.current = false
+    seekbarRotationChangedRef.current = false
+  }, [url])
 
   useEffect(() => {
     if (isReady && initialSeek != null && !hasSeeked) {
@@ -543,25 +658,71 @@ export default function VideoPlayer({
   }, [onTimeUpdate])
 
   // small helpers passed into platform components
-  const onPlayerProgress = ({ playedSeconds }: { playedSeconds: number }) =>
+  const onPlayerProgress = ({ playedSeconds }: { playedSeconds: number }) => {
     setCurrentTime(playedSeconds)
-  const onPlayerPlay = () => setPlaying(true)
-  const onPlayerPause = () => setPlaying(false)
 
-  const handleSeekBarDragMobile = (dragging: boolean) => {
-    if (dragging) {
-      setMobileUIVisible(true)
-      clearMobileHide()
-    } else {
-      lastSeekDragEndTime.current = Date.now()
-      scheduleMobileHide()
-      suppressNextClick.current = true
-      window.setTimeout(() => (suppressNextClick.current = false), 350)
+    // If the underlying HTMLVideoElement reports ended, call the handler.
+    const internal = playerRef.current?.getInternalPlayer() as HTMLVideoElement | null
+    if (internal?.ended) {
+      handleEnded()
+      return
+    }
+
+    // Additional time-based safety: if progressed to (duration - eps) call ended.
+    const eps = 0.5
+    if (
+      duration > 0 &&
+      !isUserSeekingRef.current &&
+      Number.isFinite(playedSeconds) &&
+      playedSeconds >= Math.max(0, duration - eps)
+    ) {
+      handleEnded()
     }
   }
 
-  const handleSeekBarDragPC = (dragging: boolean) => {
-    if (!dragging) lastSeekDragEndTime.current = Date.now()
+  const onPlayerPlay = () => setPlaying(true)
+  const onPlayerPause = () => setPlaying(false)
+
+  // Fallback: if 'ended' event is missed (some mobile browsers), detect by time
+  useEffect(() => {
+    if (duration <= 0) return
+    const eps = 0.5
+    if (
+      !isUserSeekingRef.current &&
+      Number.isFinite(currentTime) &&
+      currentTime >= Math.max(0, duration - eps)
+    ) {
+      handleEnded()
+    }
+  }, [currentTime, duration, handleEnded])
+
+  const handleSeekBarDrag = (dragging: boolean) => {
+    isUserSeekingRef.current = dragging
+
+    if (dragging) {
+      if (isMobile) {
+        setMobileUIVisible(true)
+        clearMobileHide()
+      }
+    } else {
+      lastSeekDragEndTime.current = Date.now()
+      if (isMobile) {
+        scheduleMobileHide()
+        suppressClickTemporary()
+      }
+
+      // If the user just released and the player is already at/near the end,
+      // treat it as an intentional end and call handleEnded once.
+      const eps = 0.5
+      const current = playerRef.current?.getCurrentTime?.() ?? 0
+      if (Number.isFinite(current) && duration > 0 && current >= Math.max(0, duration - eps)) {
+        const now = Date.now()
+        if (now - lastEndedTime.current > 1000) {
+          lastEndedTime.current = now
+          handleEnded()
+        }
+      }
+    }
   }
 
   // If parent requested startFullscreen (e.g. navigating from previous fullscreen mobile episode), enter fullscreen on mount
@@ -615,7 +776,7 @@ export default function VideoPlayer({
       handleMouseEnter={handleMouseEnter}
       handleMouseLeave={handleMouseLeave}
       formatTimeLabel={formatTimeLabel}
-      onSeekBarDragMobile={handleSeekBarDragMobile}
+      onSeekBarDragMobile={handleSeekBarDrag}
     />
   ) : (
     <VideoPlayerPC
@@ -647,7 +808,7 @@ export default function VideoPlayer({
       handlePlayPause={handlePlayPause}
       handleSeek={handleSeek}
       handleSeekRelative={handleSeekRelative}
-      onSeekBarDrag={handleSeekBarDragPC}
+      onSeekBarDrag={handleSeekBarDrag}
       handleToggleFullscreen={handleToggleFullscreen}
       handlePlaybackRateChange={handlePlaybackRateChange}
       handleVolumeChange={handleVolumeChange}

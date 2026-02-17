@@ -187,6 +187,7 @@ export default function VideoPlayerMobile({
             ref={playerRef}
             url={url}
             playing={playing}
+            progressInterval={200}
             volume={volume}
             controls={false}
             width='100%'
@@ -279,7 +280,7 @@ export default function VideoPlayerMobile({
                 left: isFullscreen ? 30 : 15,
                 right: isFullscreen ? 80 : 80,
                 bottom: isFullscreen ? 20 : 15,
-                height: 72,
+                height: 40, // reduced hit area height
                 zIndex: 60,
                 touchAction: 'none'
               }}
@@ -289,7 +290,7 @@ export default function VideoPlayerMobile({
             >
               <div
                 data-player-seekbar-visual
-                className='bg-black/40 backdrop-blur-sm rounded-xl px-3 py-2'
+                className='bg-black/40 backdrop-blur-sm rounded-xl px-2 py-1' // reduced padding
                 style={{ position: 'absolute', left: 0, right: 0, bottom: 0 }}
               >
                 <div className='flex items-center gap-3'>
@@ -306,6 +307,7 @@ export default function VideoPlayerMobile({
                       }
                       rotationDeg={rotationDeg}
                       onDrag={dragging => onSeekBarDragMobile(dragging)}
+                      expanded={false}
                     />
                   </div>
                   <div className='text-white text-sm select-none ml-2' style={{ minWidth: 48 }}>

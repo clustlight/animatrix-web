@@ -112,6 +112,7 @@ export default function VideoPlayerPC({
             ref={playerRef}
             url={url}
             playing={playing}
+            progressInterval={200}
             volume={volume}
             controls={false}
             width='100%'
