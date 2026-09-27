@@ -1,203 +1,8 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useToast } from '../providers/ToastProvider'
 import type { Episode, Season } from '../../types'
-import { getApiBaseUrl } from '../../lib/config'
 import { MdEdit, MdCheck, MdClose } from 'react-icons/md'
-
-type SyoboiTitleSearchItem = {
-  TID: string
-  Title: string
-  ShortTitle?: string
-  TitleYomi?: string
-  TitleEN?: string
-  Comment?: string
-  FirstYear?: string
-  FirstMonth?: string
-  FirstEndYear?: string
-  FirstEndMonth?: string
-  FirstCh?: string
-}
-
-type SyoboiTitleSearchResponse = {
-  Titles?: Record<string, SyoboiTitleSearchItem>
-}
-
-type SyoboiProgramItem = {
-  PID?: string
-  TID?: string
-  StTime?: string
-  EdTime?: string
-  ChID?: string
-  Count?: string
-  SubTitle?: string
-  ProgComment?: string
-}
-
-type SyoboiProgramResponse = {
-  Programs?: Record<string, SyoboiProgramItem> | SyoboiProgramItem[]
-}
-
-type SyoboiTitleResult = {
-  tid: number
-  title: string
-  titleYomi: string
-  titleEn: string
-  firstYear: number
-  firstMonth: number
-  firstEndYear: number
-  firstEndMonth: number
-  firstCh: string
-  score: number
-}
-
-const normalize = (value: string) =>
-  value
-    .toLowerCase()
-    .replace(/[\s\u3000\-_.!！?？:：()（）\[\]{}「」『』【】<>＜＞"'、。・]/g, '')
-    .replace(/[ぁ-ん]/g, s => String.fromCharCode(s.charCodeAt(0) + 0x60))
-
-const scoreTitleMatch = (query: string, title: SyoboiTitleResult) => {
-  const normalizedQuery = normalize(query)
-  if (!normalizedQuery) return 0
-  const candidates = [title.title, title.titleYomi, title.titleEn].map(normalize)
-  let score = 0
-  for (const candidate of candidates) {
-    if (!candidate) continue
-    if (candidate === normalizedQuery) score += 5
-    if (candidate.includes(normalizedQuery)) score += 3
-    if (normalizedQuery.includes(candidate)) score += 1
-  }
-  return score
-}
-
-const toNumber = (value?: string) => (value ? Number(value) : 0)
-
-const splitDescriptionSections = (value: string) => {
-  const sections: { title: string | null; body: string[] }[] = []
-  let current: { title: string | null; body: string[] } = { title: null, body: [] }
-  const lines = value.split(/\r?\n/)
-
-  const pushCurrent = () => {
-    if (current.title || current.body.length > 0) {
-      sections.push(current)
-    }
-  }
-
-  for (const rawLine of lines) {
-    const line = rawLine.trimEnd()
-    if (!line) {
-      current.body.push('')
-      continue
-    }
-    if (line.startsWith('*') && !line.startsWith('**')) {
-      pushCurrent()
-      current = { title: line.slice(1).trim() || null, body: [] }
-      continue
-    }
-    current.body.push(line)
-  }
-
-  pushCurrent()
-  return sections
-}
-
-const mergeDescriptions = (baseText: string, appendText: string) => {
-  if (!baseText.trim()) return appendText.trim()
-  if (!appendText.trim()) return baseText.trim()
-
-  const baseSections = splitDescriptionSections(baseText)
-  const appendSections = splitDescriptionSections(appendText)
-  const merged = new Map<string, { title: string | null; body: string[] }>()
-  const order: string[] = []
-
-  const getKey = (title: string | null) => (title ? `title:${title}` : 'title:__untitled')
-
-  const isDedupSection = (title: string | null) =>
-    Boolean(title && (title.includes('スタッフ') || title.includes('キャスト')))
-
-  const addSection = (section: { title: string | null; body: string[] }) => {
-    const key = getKey(section.title)
-    if (!merged.has(key)) {
-      merged.set(key, { title: section.title, body: [...section.body] })
-      order.push(key)
-      return
-    }
-    const target = merged.get(key)
-    if (!target) return
-    if (isDedupSection(target.title)) {
-      const existing = new Set(target.body.map(line => line.trim()))
-      section.body.forEach(line => {
-        const trimmed = line.trim()
-        if (!trimmed || existing.has(trimmed)) return
-        existing.add(trimmed)
-        target.body.push(line)
-      })
-      return
-    }
-    if (target.body.length > 0 && target.body[target.body.length - 1].trim() !== '') {
-      target.body.push('')
-    }
-    target.body.push(...section.body)
-  }
-
-  baseSections.forEach(addSection)
-  appendSections.forEach(addSection)
-
-  return order
-    .map(key => {
-      const section = merged.get(key)
-      if (!section) return ''
-      const lines = [] as string[]
-      if (section.title) lines.push(`*${section.title}`)
-      lines.push(...section.body)
-      return lines.join('\n').trimEnd()
-    })
-    .filter(Boolean)
-    .join('\n\n')
-    .trim()
-}
-
-async function fetchSyoboiJson<T>(url: string): Promise<T> {
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`Syoboi API error: ${res.status}`)
-  return res.json()
-}
-
-function fetchSyoboiJsonp<T>(url: string): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const callbackName = `syoboiJsonp_${Date.now()}_${Math.floor(Math.random() * 1000)}`
-    const jsonpWindow = window as unknown as Window & Record<string, (data: T) => void>
-    const script = document.createElement('script')
-    const cleanup = () => {
-      delete jsonpWindow[callbackName]
-      script.remove()
-    }
-
-    jsonpWindow[callbackName] = (data: T) => {
-      cleanup()
-      resolve(data)
-    }
-
-    script.onerror = () => {
-      cleanup()
-      reject(new Error('Syoboi JSONP error'))
-    }
-
-    const urlWithCallback = url.includes('callback=')
-      ? url
-      : `${url}${url.includes('?') ? '&' : '?'}callback=${callbackName}`
-    script.src = urlWithCallback
-    document.body.appendChild(script)
-  })
-}
-
-async function fetchSyoboi<T>(url: string): Promise<T> {
-  try {
-    return await fetchSyoboiJson<T>(url)
-  } catch {
-    return fetchSyoboiJsonp<T>(url)
-  }
-}
+import { useSyoboiSeasonSync } from '../../hooks/useSyoboiSeasonSync'
 
 type EditSeasonModalProps = {
   open: boolean
@@ -208,6 +13,10 @@ type EditSeasonModalProps = {
   onSave: (seasonId: string, newTitle: string) => Promise<void>
   episodes?: Episode[]
   onDeleteEpisode?: (episodeId: string, episodeTitle?: string) => Promise<void>
+  onUpdateEpisode?: (
+    episodeId: string,
+    changes: { title: string; timestamp: string }
+  ) => Promise<void>
   onSeasonSynced?: (seasonId: string, updatedSeason: Season) => void
   shoboiTid?: number
 }
@@ -221,6 +30,7 @@ export function EditSeasonModal({
   onSave,
   episodes = [],
   onDeleteEpisode,
+  onUpdateEpisode,
   onSeasonSynced,
   shoboiTid
 }: EditSeasonModalProps) {
@@ -228,26 +38,39 @@ export function EditSeasonModal({
   const [title, setTitle] = useState(initialTitle)
   const [loading, setLoading] = useState(false)
   const [deletingEpisodeId, setDeletingEpisodeId] = useState<string | null>(null)
-  const [syoboiQuery, setSyoboiQuery] = useState('')
-  const [syoboiResults, setSyoboiResults] = useState<SyoboiTitleResult[]>([])
-  const [syoboiSelected, setSyoboiSelected] = useState<SyoboiTitleResult | null>(null)
-  const [syoboiLoading, setSyoboiLoading] = useState(false)
-  const [syoboiError, setSyoboiError] = useState<string | null>(null)
-  const [syoboiSearched, setSyoboiSearched] = useState(false)
-  const [syoboiApplyLoading, setSyoboiApplyLoading] = useState(false)
-  const [syoboiAppendLoading, setSyoboiAppendLoading] = useState(false)
-  const [syoboiEpisodeLoading, setSyoboiEpisodeLoading] = useState(false)
-  const [syoboiEpisodeProgress, setSyoboiEpisodeProgress] = useState(0)
   const { showToast } = useToast()
+  const {
+    query: syoboiQuery,
+    setQuery: setSyoboiQuery,
+    results: syoboiResults,
+    selected: syoboiSelected,
+    setSelected: setSyoboiSelected,
+    loading: syoboiLoading,
+    error: syoboiError,
+    searched: syoboiSearched,
+    applyLoading: syoboiApplyLoading,
+    appendLoading: syoboiAppendLoading,
+    episodeLoading: syoboiEpisodeLoading,
+    episodeProgress: syoboiEpisodeProgress,
+    startEpisodeNumber,
+    setStartEpisodeNumber,
+    search: handleSyoboiSearch,
+    applyEpisodeSchedule: handleSyoboiEpisodeApply,
+    applySelected: handleSyoboiApply,
+    appendSelected: handleSyoboiAppend
+  } = useSyoboiSeasonSync({
+    open,
+    seasonId,
+    initialTitle,
+    episodes,
+    shoboiTid,
+    onSeasonSynced,
+    onTitleChange: setTitle
+  })
 
   useEffect(() => {
     setTitle(initialTitle)
     setEditing(false)
-    setSyoboiQuery(initialTitle)
-    setSyoboiResults([])
-    setSyoboiSelected(null)
-    setSyoboiError(null)
-    setSyoboiSearched(false)
   }, [initialTitle, open])
 
   useEffect(() => {
@@ -286,231 +109,6 @@ export function EditSeasonModal({
       setDeletingEpisodeId(null)
     }
   }
-
-  const handleSyoboiSearch = useCallback(
-    async (query?: string) => {
-      const keyword = (query ?? syoboiQuery).trim()
-      if (!keyword) {
-        setSyoboiSearched(false)
-        return
-      }
-      setSyoboiSearched(true)
-      setSyoboiLoading(true)
-      setSyoboiError(null)
-      setSyoboiResults([])
-      setSyoboiSelected(null)
-      try {
-        const url = `https://cal.syoboi.jp/json.php?Req=TitleSearch&Search=${encodeURIComponent(
-          keyword
-        )}&Limit=30`
-        const data = await fetchSyoboi<SyoboiTitleSearchResponse>(url)
-        const items = Object.values(data.Titles ?? {}).map(item => {
-          const base: SyoboiTitleResult = {
-            tid: Number(item.TID),
-            title: item.Title ?? '',
-            titleYomi: item.TitleYomi ?? '',
-            titleEn: item.TitleEN ?? '',
-            firstYear: toNumber(item.FirstYear),
-            firstMonth: toNumber(item.FirstMonth),
-            firstEndYear: toNumber(item.FirstEndYear),
-            firstEndMonth: toNumber(item.FirstEndMonth),
-            firstCh: item.FirstCh ?? '',
-            score: 0
-          }
-          return { ...base, score: scoreTitleMatch(keyword, base) }
-        })
-        const sorted = items
-          .filter(item => Number.isFinite(item.tid))
-          .sort((a, b) => b.score - a.score || b.firstYear - a.firstYear)
-        setSyoboiResults(sorted)
-        if (sorted.length > 0) {
-          setSyoboiSelected(sorted[0])
-        }
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : '検索に失敗しました'
-        setSyoboiError(msg)
-      } finally {
-        setSyoboiLoading(false)
-      }
-    },
-    [syoboiQuery]
-  )
-
-  const getFirstProgram = (data: SyoboiProgramResponse): SyoboiProgramItem | null => {
-    if (!data.Programs) return null
-    if (Array.isArray(data.Programs)) return data.Programs[0] ?? null
-    const first = Object.values(data.Programs)[0]
-    return first ?? null
-  }
-
-  const handleSyoboiEpisodeApply = useCallback(async () => {
-    const tid = syoboiSelected?.tid ?? shoboiTid
-    if (!tid) {
-      const msg = 'しょぼいTIDが未選択です'
-      setSyoboiError(msg)
-      showToast(msg, 'error')
-      return
-    }
-    if (episodes.length === 0) {
-      const msg = '転写対象のエピソードがありません'
-      setSyoboiError(msg)
-      showToast(msg, 'error')
-      return
-    }
-
-    setSyoboiEpisodeLoading(true)
-    setSyoboiEpisodeProgress(0)
-    setSyoboiError(null)
-
-    try {
-      const baseUrl = await getApiBaseUrl()
-      let updatedCount = 0
-      let processed = 0
-
-      for (const ep of episodes) {
-        processed += 1
-        setSyoboiEpisodeProgress(Math.round((processed / episodes.length) * 100))
-
-        if (!ep.episode_number || ep.episode_number < 1) continue
-
-        const programUrl = `https://cal.syoboi.jp/json.php?Req=ProgramByCount&TID=${tid}&Count=${ep.episode_number}`
-        const programData = await fetchSyoboi<SyoboiProgramResponse>(programUrl)
-        const program = getFirstProgram(programData)
-        if (!program?.StTime) continue
-
-        const timestamp = new Date(Number(program.StTime) * 1000).toISOString()
-        const comment = (program.ProgComment ?? '').trim()
-        const subtitle = (program.SubTitle ?? '').trim()
-        const description = comment || subtitle
-
-        const payload: { timestamp?: string; description?: string } = { timestamp }
-        if (description) payload.description = description
-
-        const res = await fetch(`${baseUrl}/v1/episode/${ep.episode_id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        })
-        if (res.ok) updatedCount += 1
-      }
-
-      const updatedSeason = await fetch(`${baseUrl}/v1/season/${seasonId}`, {
-        headers: { 'Content-Type': 'application/json' }
-      })
-      if (updatedSeason.ok) {
-        const seasonData = (await updatedSeason.json()) as Season
-        onSeasonSynced?.(seasonId, seasonData)
-      }
-      showToast(`各話の転写が完了しました (${updatedCount}件)`, 'success')
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : '各話の転写に失敗しました'
-      setSyoboiError(msg)
-      showToast(msg, 'error')
-    } finally {
-      setSyoboiEpisodeLoading(false)
-      setSyoboiEpisodeProgress(0)
-    }
-  }, [episodes, seasonId, shoboiTid, syoboiSelected, onSeasonSynced, showToast])
-
-  const handleSyoboiApply = useCallback(async () => {
-    if (!syoboiSelected) return
-    setSyoboiApplyLoading(true)
-    setSyoboiError(null)
-    try {
-      const detailUrl = `https://cal.syoboi.jp/json.php?Req=TitleFull&TID=${syoboiSelected.tid}`
-      const detail = await fetchSyoboi<SyoboiTitleSearchResponse>(detailUrl)
-      const detailItem = detail.Titles?.[String(syoboiSelected.tid)]
-      const payload = {
-        season_title: syoboiSelected.title,
-        shoboi_tid: syoboiSelected.tid,
-        description: detailItem?.Comment ?? '',
-        first_year: toNumber(detailItem?.FirstYear) || syoboiSelected.firstYear,
-        first_month: toNumber(detailItem?.FirstMonth) || syoboiSelected.firstMonth,
-        first_end_year: toNumber(detailItem?.FirstEndYear) || syoboiSelected.firstEndYear,
-        first_end_month: toNumber(detailItem?.FirstEndMonth) || syoboiSelected.firstEndMonth
-      }
-
-      const baseUrl = await getApiBaseUrl()
-      const res = await fetch(`${baseUrl}/v1/season/${seasonId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      })
-      if (!res.ok) throw new Error('転写に失敗しました')
-
-      const updated = await fetch(`${baseUrl}/v1/season/${seasonId}`, {
-        headers: { 'Content-Type': 'application/json' }
-      })
-      if (updated.ok) {
-        const updatedSeason = (await updated.json()) as Season
-        onSeasonSynced?.(seasonId, updatedSeason)
-        setTitle(updatedSeason.season_title)
-      }
-      showToast('しょぼいカレンダーから転写しました', 'success')
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : '転写に失敗しました'
-      setSyoboiError(msg)
-      showToast(msg, 'error')
-    } finally {
-      setSyoboiApplyLoading(false)
-    }
-  }, [seasonId, syoboiSelected, onSeasonSynced, showToast])
-
-  const handleSyoboiAppend = useCallback(async () => {
-    if (!syoboiSelected) return
-    setSyoboiAppendLoading(true)
-    setSyoboiError(null)
-    try {
-      const detailUrl = `https://cal.syoboi.jp/json.php?Req=TitleFull&TID=${syoboiSelected.tid}`
-      const detail = await fetchSyoboi<SyoboiTitleSearchResponse>(detailUrl)
-      const detailItem = detail.Titles?.[String(syoboiSelected.tid)]
-      const appendedDescription = (detailItem?.Comment ?? '').trim()
-
-      const baseUrl = await getApiBaseUrl()
-      const currentRes = await fetch(`${baseUrl}/v1/season/${seasonId}`, {
-        headers: { 'Content-Type': 'application/json' }
-      })
-      if (!currentRes.ok) throw new Error('シーズン取得に失敗しました')
-      const currentSeason = (await currentRes.json()) as Season
-
-      const mergedDescription = mergeDescriptions(
-        currentSeason.description ?? '',
-        appendedDescription
-      )
-
-      const nextEndYear = toNumber(detailItem?.FirstEndYear) || syoboiSelected.firstEndYear || 0
-      const nextEndMonth = toNumber(detailItem?.FirstEndMonth) || syoboiSelected.firstEndMonth || 0
-
-      const payload: { description?: string; first_end_year?: number; first_end_month?: number } = {
-        description: mergedDescription || undefined,
-        first_end_year: nextEndYear || undefined,
-        first_end_month: nextEndMonth || undefined
-      }
-
-      const res = await fetch(`${baseUrl}/v1/season/${seasonId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      })
-      if (!res.ok) throw new Error('追記に失敗しました')
-
-      const updated = await fetch(`${baseUrl}/v1/season/${seasonId}`, {
-        headers: { 'Content-Type': 'application/json' }
-      })
-      if (updated.ok) {
-        const updatedSeason = (await updated.json()) as Season
-        onSeasonSynced?.(seasonId, updatedSeason)
-        setTitle(updatedSeason.season_title)
-      }
-      showToast('追記しました', 'success')
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : '追記に失敗しました'
-      setSyoboiError(msg)
-      showToast(msg, 'error')
-    } finally {
-      setSyoboiAppendLoading(false)
-    }
-  }, [seasonId, syoboiSelected, onSeasonSynced, showToast])
 
   if (!open) return null
   return (
@@ -663,7 +261,24 @@ export function EditSeasonModal({
               {syoboiAppendLoading ? '追記中...' : '内容を追記'}
             </button>
           </div>
-          <div className='mt-3 flex items-center gap-3'>
+          <div className='mt-3 flex flex-wrap items-center gap-3'>
+            <label className='flex items-center gap-2 text-xs text-muted-foreground'>
+              開始する内部話数
+              <input
+                type='number'
+                min={1}
+                step={1}
+                value={startEpisodeNumber}
+                onChange={event =>
+                  setStartEpisodeNumber(Math.max(1, Number(event.target.value) || 1))
+                }
+                className='w-20 rounded border border-border bg-background px-2 py-1 text-foreground'
+                disabled={syoboiEpisodeLoading}
+              />
+            </label>
+            <span className='basis-full text-xs text-muted-foreground'>
+              内部話数と同じCountを優先し、放送情報がなければ開始内部話数からの相対Countで転写します
+            </span>
             <button
               className='px-3 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded disabled:opacity-60'
               onClick={handleSyoboiEpisodeApply}
@@ -684,33 +299,14 @@ export function EditSeasonModal({
           {episodes.length === 0 ? (
             <li className='text-muted-foreground text-center py-2'>エピソードがありません</li>
           ) : (
-            episodes.map(ep => (
-              <li key={ep.episode_id} className='mb-1'>
-                <div className='flex items-center gap-3 w-full px-2 py-1 rounded hover:bg-muted/60'>
-                  {ep.thumbnail_url ? (
-                    <img
-                      src={ep.thumbnail_url}
-                      alt={ep.title}
-                      className='w-24 h-16 object-cover rounded shadow min-w-24 min-h-16'
-                      onError={e => (e.currentTarget.style.display = 'none')}
-                    />
-                  ) : (
-                    <div className='w-24 h-16 bg-muted rounded flex items-center justify-center text-muted-foreground text-xs'>
-                      No Image
-                    </div>
-                  )}
-                  <span className='flex-1 flex flex-col'>
-                    <span>{ep.title}</span>
-                    <span className='text-xs text-muted-foreground'>ID: {ep.episode_id}</span>
-                  </span>
-                  <button
-                    className='px-2 py-1 bg-red-700 text-white rounded cursor-pointer text-xs'
-                    onClick={() => handleDeleteEpisode(ep.episode_id, ep.title)}
-                    disabled={deletingEpisodeId === ep.episode_id}
-                  >
-                    {deletingEpisodeId === ep.episode_id ? '削除中...' : '削除'}
-                  </button>
-                </div>
+            episodes.map(episode => (
+              <li key={episode.episode_id} className='mb-1'>
+                <EpisodeMetadataRow
+                  episode={episode}
+                  onSave={onUpdateEpisode}
+                  onDelete={() => handleDeleteEpisode(episode.episode_id, episode.title)}
+                  deleting={deletingEpisodeId === episode.episode_id}
+                />
               </li>
             ))
           )}
@@ -725,6 +321,149 @@ export function EditSeasonModal({
           </button>
         </div>
       </div>
+    </div>
+  )
+}
+
+function toDateTimeInput(timestamp: string) {
+  const date = new Date(timestamp)
+  if (Number.isNaN(date.getTime())) return ''
+  date.setMinutes(date.getMinutes() - date.getTimezoneOffset())
+  return date.toISOString().slice(0, 19)
+}
+
+function EpisodeMetadataRow({
+  episode,
+  onSave,
+  onDelete,
+  deleting
+}: {
+  episode: Episode
+  onSave?: (episodeId: string, changes: { title: string; timestamp: string }) => Promise<void>
+  onDelete: () => void
+  deleting: boolean
+}) {
+  const [editing, setEditing] = useState(false)
+  const [title, setTitle] = useState(episode.title)
+  const [timestamp, setTimestamp] = useState(() => toDateTimeInput(episode.timestamp))
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const beginEditing = () => {
+    setTitle(episode.title)
+    setTimestamp(toDateTimeInput(episode.timestamp))
+    setError(null)
+    setEditing(true)
+  }
+
+  const save = async () => {
+    if (!onSave) return
+    const date = new Date(timestamp)
+    if (!title.trim() || Number.isNaN(date.getTime())) {
+      setError('タイトルと有効な放送開始日時を入力してください')
+      return
+    }
+    setSaving(true)
+    setError(null)
+    try {
+      await onSave(episode.episode_id, { title: title.trim(), timestamp: date.toISOString() })
+      setEditing(false)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'エピソードの更新に失敗しました')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className='flex items-center gap-3 w-full px-2 py-1 rounded hover:bg-muted/60'>
+      {episode.thumbnail_url ? (
+        <img
+          src={episode.thumbnail_url}
+          alt={episode.title}
+          className='w-24 h-16 object-cover rounded shadow min-w-24 min-h-16'
+          onError={event => (event.currentTarget.style.display = 'none')}
+        />
+      ) : (
+        <div className='w-24 h-16 bg-muted rounded flex items-center justify-center text-muted-foreground text-xs'>
+          No Image
+        </div>
+      )}
+      <div className='flex-1 flex min-w-0 flex-col gap-1'>
+        {editing ? (
+          <>
+            <input
+              aria-label='エピソードタイトル'
+              value={title}
+              onChange={event => setTitle(event.target.value)}
+              className='w-full rounded border border-border bg-background px-2 py-1 text-sm text-foreground'
+              disabled={saving}
+            />
+            <label className='flex flex-wrap items-center gap-2 text-xs text-muted-foreground'>
+              放送開始日時
+              <input
+                aria-label='放送開始日時'
+                type='datetime-local'
+                step={1}
+                value={timestamp}
+                onChange={event => setTimestamp(event.target.value)}
+                className='rounded border border-border bg-background px-2 py-1 text-foreground'
+                disabled={saving}
+              />
+            </label>
+            {error && <span className='text-xs text-red-500'>{error}</span>}
+          </>
+        ) : (
+          <>
+            <span className='break-words'>{episode.title}</span>
+            <span className='text-xs text-muted-foreground'>
+              {Number.isNaN(new Date(episode.timestamp).getTime())
+                ? episode.timestamp
+                : new Date(episode.timestamp).toLocaleString('ja-JP')}
+            </span>
+            <span className='text-xs text-muted-foreground'>ID: {episode.episode_id}</span>
+          </>
+        )}
+      </div>
+      {editing ? (
+        <div className='flex shrink-0 gap-1'>
+          <button
+            type='button'
+            className='rounded bg-green-700 px-2 py-1 text-xs text-white disabled:opacity-60'
+            onClick={() => void save()}
+            disabled={saving || !onSave}
+          >
+            {saving ? '保存中…' : '保存'}
+          </button>
+          <button
+            type='button'
+            className='rounded border border-border px-2 py-1 text-xs text-foreground disabled:opacity-60'
+            onClick={() => setEditing(false)}
+            disabled={saving}
+          >
+            戻る
+          </button>
+        </div>
+      ) : (
+        <div className='flex shrink-0 flex-col gap-1'>
+          <button
+            type='button'
+            className='rounded border border-border px-2 py-1 text-xs text-foreground disabled:opacity-60'
+            onClick={beginEditing}
+            disabled={!onSave}
+          >
+            編集
+          </button>
+          <button
+            type='button'
+            className='px-2 py-1 bg-red-700 text-white rounded cursor-pointer text-xs disabled:opacity-60'
+            onClick={onDelete}
+            disabled={deleting || editing}
+          >
+            {deleting ? '削除中…' : '削除'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }

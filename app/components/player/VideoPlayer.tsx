@@ -11,6 +11,7 @@ import { useVideoPlayerShortcuts } from './useVideoPlayerShortcuts'
 import { useInputFocus } from './useInputFocus'
 import { clamp, formatPlayerTime } from './playerUtils'
 import { useMobileSeekbarTouch } from './useMobileSeekbarTouch'
+import { usePlayerPlaybackEvents } from './usePlayerPlaybackEvents'
 
 // Video player component
 type VideoPlayerProps = {
@@ -115,10 +116,6 @@ export default function VideoPlayer({
 
   // Track whether the user is actively dragging/seeking (set by SeekBar via onDrag)
   const isUserSeekingRef = useRef<boolean>(false)
-  // Handle only one end event for each source, even if progress and ended events overlap.
-  const endedForCurrentUrlRef = useRef(false)
-  // Prevent duplicate onEnded handling within short window
-  const lastEndedTime = useRef<number>(0)
 
   // Custom hooks
   const { isFullscreen, toggleFullscreen } = useFullscreen(
@@ -128,6 +125,18 @@ export default function VideoPlayer({
     isFullscreen
   })
   const inputFocused = useInputFocus()
+  const { handleEnded, onPlayerProgress, onPlayerPlay, onPlayerPause } = usePlayerPlaybackEvents({
+    playerRef,
+    url,
+    duration,
+    currentTime,
+    currentTimeRef,
+    isFullscreen,
+    onEnded,
+    setPlaying,
+    setCurrentTime,
+    isUserSeekingRef
+  })
 
   // Preserve currentTime across remounts when switching fullscreen (we render a different ReactPlayer node)
   const pendingSeekOnReady = useRef(false)
@@ -443,22 +452,6 @@ export default function VideoPlayer({
     return () => mq.removeEventListener?.('change', onChange)
   }, [])
 
-  // Callback on video end (stable reference)
-  const handleEnded = useCallback(() => {
-    // If the user is actively seeking, ignore onEnded events until they release.
-    if (isUserSeekingRef.current || endedForCurrentUrlRef.current) return
-
-    // prevent duplicate handling
-    const now = Date.now()
-    if (now - lastEndedTime.current < 1000) return
-    lastEndedTime.current = now
-    endedForCurrentUrlRef.current = true
-
-    // Stop the ended source while the parent prepares the next episode.
-    setPlaying(false)
-    if (onEnded) onEnded({ keepFullscreen: isFullscreen })
-  }, [isFullscreen, onEnded, setPlaying])
-
   useEffect(() => {
     setPlaying(autoPlay)
   }, [autoPlay, url])
@@ -487,7 +480,6 @@ export default function VideoPlayer({
     // Reset pending/interaction refs so the new episode starts clean
     pendingSeekOnReady.current = false
     isUserSeekingRef.current = false
-    endedForCurrentUrlRef.current = false
   }, [url])
 
   useEffect(() => {
@@ -506,46 +498,6 @@ export default function VideoPlayer({
     }, 1000)
     return () => clearInterval(interval)
   }, [onTimeUpdate])
-
-  // small helpers passed into platform components
-  const onPlayerProgress = ({ playedSeconds }: { playedSeconds: number }) => {
-    currentTimeRef.current = playedSeconds
-    setCurrentTime(playedSeconds)
-
-    // If the underlying HTMLVideoElement reports ended, call the handler.
-    const internal = playerRef.current?.getInternalPlayer() as HTMLVideoElement | null
-    if (internal?.ended) {
-      handleEnded()
-      return
-    }
-
-    // Additional time-based safety: if progressed to (duration - eps) call ended.
-    const eps = 0.5
-    if (
-      duration > 0 &&
-      !isUserSeekingRef.current &&
-      Number.isFinite(playedSeconds) &&
-      playedSeconds >= Math.max(0, duration - eps)
-    ) {
-      handleEnded()
-    }
-  }
-
-  const onPlayerPlay = () => setPlaying(true)
-  const onPlayerPause = () => setPlaying(false)
-
-  // Fallback: if 'ended' event is missed (some mobile browsers), detect by time
-  useEffect(() => {
-    if (duration <= 0) return
-    const eps = 0.5
-    if (
-      !isUserSeekingRef.current &&
-      Number.isFinite(currentTime) &&
-      currentTime >= Math.max(0, duration - eps)
-    ) {
-      handleEnded()
-    }
-  }, [currentTime, duration, handleEnded])
 
   const handleSeekBarDrag = (dragging: boolean) => {
     isUserSeekingRef.current = dragging
@@ -567,11 +519,7 @@ export default function VideoPlayer({
       const eps = 0.5
       const current = playerRef.current?.getCurrentTime?.() ?? 0
       if (Number.isFinite(current) && duration > 0 && current >= Math.max(0, duration - eps)) {
-        const now = Date.now()
-        if (now - lastEndedTime.current > 1000) {
-          lastEndedTime.current = now
-          handleEnded()
-        }
+        handleEnded()
       }
     }
   }
