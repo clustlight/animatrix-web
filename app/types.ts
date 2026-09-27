@@ -40,3 +40,16 @@ export interface Series {
   portrait_url: string
   seasons?: Season[]
 }
+
+export type SeasonMetadata = Pick<
+  Season,
+  | 'season_title'
+  | 'season_title_yomi'
+  | 'season_number'
+  | 'shoboi_tid'
+  | 'description'
+  | 'first_year'
+  | 'first_month'
+  | 'first_end_year'
+  | 'first_end_month'
+>

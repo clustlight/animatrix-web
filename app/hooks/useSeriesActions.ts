@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
-import type { Season } from '../types'
+import type { Season, SeasonMetadata } from '../types'
 import { getApiBaseUrl } from '../lib/config'
 import { useToast } from '../components/providers/ToastProvider'
 
@@ -95,15 +95,13 @@ export function useSeriesActions({
     }
   }, [seriesId, setDeleteDialogOpen, showToast])
 
-  const updateSeasonTitle = useCallback(
-    async (seasonId: string, newTitle: string) => {
+  const updateSeasonInfo = useCallback(
+    async (seasonId: string, changes: SeasonMetadata) => {
       const baseUrl = await getApiBaseUrl()
-      await patchJson(`${baseUrl}/v1/season/${seasonId}`, { season_title: newTitle })
-      setEditSeasonTitle(newTitle)
+      await patchJson(`${baseUrl}/v1/season/${seasonId}`, changes)
+      setEditSeasonTitle(changes.season_title)
       setSeasons(previous =>
-        previous.map(season =>
-          season.season_id === seasonId ? { ...season, season_title: newTitle } : season
-        )
+        previous.map(season => (season.season_id === seasonId ? { ...season, ...changes } : season))
       )
     },
     [setEditSeasonTitle, setSeasons]
@@ -116,6 +114,6 @@ export function useSeriesActions({
     saveTitle,
     moveSeason,
     deleteSeries,
-    updateSeasonTitle
+    updateSeasonInfo
   }
 }

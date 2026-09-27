@@ -81,7 +81,7 @@ export default function Series({ loaderData }: Route.ComponentProps) {
     saveTitle: handleTitleSave,
     moveSeason: handleMoveSeason,
     deleteSeries: handleDeleteSeries,
-    updateSeasonTitle
+    updateSeasonInfo
   } = useSeriesActions({
     seriesId: seriesData.series_id,
     title,
@@ -185,8 +185,9 @@ export default function Series({ loaderData }: Route.ComponentProps) {
           onClose={() => setEditSeasonModalOpen(false)}
           seasonId={editSeasonId ?? ''}
           initialTitle={editSeasonTitle}
+          initialSeason={seasons.find(season => season.season_id === editSeasonId)}
           seriesTitle={seriesData.title}
-          onSave={updateSeasonTitle}
+          onSave={updateSeasonInfo}
           episodes={seasons.find(s => s.season_id === editSeasonId)?.episodes ?? []}
           onDeleteEpisode={deleteEpisode}
           onUpdateEpisode={updateEpisode}
