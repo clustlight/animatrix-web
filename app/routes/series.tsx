@@ -1,7 +1,6 @@
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
-import { useCallback, useEffect, useState, useMemo } from 'react'
-import { useSearchParams } from 'react-router'
+import { useEffect, useState } from 'react'
 import type { Series } from '../types'
 import type { Route } from './+types/series'
 import 'dayjs/locale/ja'
@@ -17,6 +16,8 @@ import { DeleteDialog } from '../components/dialogs/DeleteDialog'
 import { SeriesHeader } from '../components/headers/SeriesHeader'
 import { SeasonDescription } from '../components/series/SeasonDescription'
 import { useSeriesActions } from '../hooks/useSeriesActions'
+import { useSeriesPageState } from '../hooks/useSeriesPageState'
+import { useEpisodeActions } from '../hooks/useEpisodeActions'
 
 dayjs.extend(relativeTime)
 dayjs.locale('ja')
@@ -48,25 +49,31 @@ export default function Series({ loaderData }: Route.ComponentProps) {
   }
 
   const seriesData = loaderData as Series
-  const [seasons, setSeasons] = useState(seriesData.seasons ?? [])
-  const [searchParams, setSearchParams] = useSearchParams()
-  const seasonParam = searchParams.get('season')
-
-  const initialSeasonIndex = useMemo(
-    () => (seasonParam ? seasons.findIndex(s => s.season_id === seasonParam) : 0),
-    [seasonParam, seasons]
-  )
-  const [activeSeason, setActiveSeason] = useState(initialSeasonIndex >= 0 ? initialSeasonIndex : 0)
   const [editing, setEditing] = useState(false)
   const [title, setTitle] = useState(seriesData.title)
-  const [moveModalOpen, setMoveModalOpen] = useState(false)
-  const [moveSeasonId, setMoveSeasonId] = useState<string | null>(null)
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [editSeasonModalOpen, setEditSeasonModalOpen] = useState(false)
-  const [editSeasonId, setEditSeasonId] = useState<string | null>(null)
-  const [editSeasonTitle, setEditSeasonTitle] = useState<string>('')
+  const {
+    seasons,
+    setSeasons,
+    activeSeason,
+    activeSeasonData,
+    totalEpisodes,
+    seasonPeriod,
+    activePortraitUrl,
+    handleTabClick,
+    handleMoveClick,
+    moveModalOpen,
+    setMoveModalOpen,
+    moveSeasonId,
+    deleteDialogOpen,
+    setDeleteDialogOpen,
+    editSeasonModalOpen,
+    setEditSeasonModalOpen,
+    editSeasonId,
+    setEditSeasonId,
+    editSeasonTitle,
+    setEditSeasonTitle
+  } = useSeriesPageState(seriesData)
 
-  const activeSeasonData = seasons[activeSeason]
   const {
     editLoading,
     moveLoading,
@@ -74,27 +81,22 @@ export default function Series({ loaderData }: Route.ComponentProps) {
     saveTitle: handleTitleSave,
     moveSeason: handleMoveSeason,
     deleteSeries: handleDeleteSeries,
-    updateSeasonTitle,
-    deleteEpisode,
-    updateEpisode,
-    seasonSynced: handleSeasonSynced
+    updateSeasonTitle
   } = useSeriesActions({
     seriesId: seriesData.series_id,
     title,
     moveSeasonId,
-    editSeasonId,
     setSeasons,
     setEditSeasonTitle,
     setEditing,
     setMoveModalOpen,
     setDeleteDialogOpen
   })
-
-  useEffect(() => {
-    if (!seasonParam) return
-    const index = seasons.findIndex(season => season.season_id === seasonParam)
-    if (index !== -1) setActiveSeason(index)
-  }, [seasonParam, seasons])
+  const {
+    deleteEpisode,
+    updateEpisode,
+    seasonSynced: handleSeasonSynced
+  } = useEpisodeActions({ editSeasonId, setSeasons })
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow
@@ -103,66 +105,7 @@ export default function Series({ loaderData }: Route.ComponentProps) {
       document.body.style.overflow = previousOverflow
     }
   }, [])
-
-  const handleTabClick = useCallback(
-    (idx: number, seasonId: string) => {
-      setSearchParams(
-        prev => {
-          const newParams = new URLSearchParams(prev)
-          newParams.set('season', seasonId)
-          return newParams
-        },
-        { replace: true }
-      )
-    },
-    [setSearchParams]
-  )
-
-  const handleMoveClick = useCallback((seasonId: string) => {
-    setMoveSeasonId(seasonId)
-    setMoveModalOpen(true)
-  }, [])
   const pageTitle = `${seriesData.title} | animatrix`
-
-  const totalEpisodes = useMemo(
-    () => seasons.reduce((acc, s) => acc + (s.episodes?.length ?? 0), 0),
-    [seasons]
-  )
-
-  const seasonPeriod = useMemo(() => {
-    if (!activeSeasonData) return ''
-    const startYear = activeSeasonData.first_year
-    const startMonth = activeSeasonData.first_month
-    const endYear = activeSeasonData.first_end_year
-    const endMonth = activeSeasonData.first_end_month
-
-    const start = startYear
-      ? startMonth
-        ? `${startYear}/${String(startMonth).padStart(2, '0')}`
-        : `${startYear}`
-      : ''
-    const end = endYear
-      ? endMonth
-        ? `${endYear}/${String(endMonth).padStart(2, '0')}`
-        : `${endYear}`
-      : ''
-
-    if (start && end) return `${start} 〜 ${end}`
-    return start || end || ''
-  }, [activeSeasonData])
-
-  const buildPortraitUrl = (inputUrl?: string) => {
-    if (!inputUrl) return inputUrl ?? ''
-    if (inputUrl.includes('%2F')) {
-      return inputUrl.replace(/%2F[^%/]+$/, '%2Fportrait.png')
-    }
-    return inputUrl.replace(/\/[^/]+$/, '/portrait.png')
-  }
-
-  const activePortraitUrl = buildPortraitUrl(
-    activeSeasonData?.thumbnail_url || seriesData.portrait_url
-  )
-
   return (
     <main className='flex items-center justify-center pt-4 pb-4 min-h-[calc(100vh-5rem)]'>
       <title>{pageTitle}</title>

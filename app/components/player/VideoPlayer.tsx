@@ -12,6 +12,8 @@ import { useInputFocus } from './useInputFocus'
 import { clamp, formatPlayerTime } from './playerUtils'
 import { useMobileSeekbarTouch } from './useMobileSeekbarTouch'
 import { usePlayerPlaybackEvents } from './usePlayerPlaybackEvents'
+import { useMobilePlayerUI } from './useMobilePlayerUI'
+import { useMobilePlayerTouches } from './useMobilePlayerTouches'
 
 // Video player component
 type VideoPlayerProps = {
@@ -80,31 +82,12 @@ export default function VideoPlayer({
   const [actionSide, setActionSide] = useState<'left' | 'right' | null>(null)
   const [showUI, setShowUI] = useState(true)
   // Mobile fullscreen UI visibility (auto-hide after inactivity)
-  const [mobileUIVisible, setMobileUIVisible] = useState(true)
-  const mobileHideTimer = useRef<NodeJS.Timeout | null>(null)
-
-  const clearMobileHide = () => {
-    if (mobileHideTimer.current) {
-      clearTimeout(mobileHideTimer.current)
-      mobileHideTimer.current = null
-    }
-  }
-
-  const scheduleMobileHide = () => {
-    clearMobileHide()
-    mobileHideTimer.current = setTimeout(() => setMobileUIVisible(false), 3000)
-  }
-  // Double-tap detection refs
-  const lastTapTime = useRef<number>(0)
-  const lastTapX = useRef<number>(0)
-  const lastTapY = useRef<number>(0)
-  const lastTapWasDouble = useRef<boolean>(false)
-  // per-side tap timing/timers
-  const sideTapTime = useRef<{ left: number; right: number }>({ left: 0, right: 0 })
-  const sideSingleTapTimer = useRef<{ left: number | null; right: number | null }>({
-    left: null,
-    right: null
-  })
+  const {
+    visible: mobileUIVisible,
+    setVisible: setMobileUIVisible,
+    scheduleHide: scheduleMobileHide,
+    clearHideTimer: clearMobileHide
+  } = useMobilePlayerUI()
   const hideUITimer = useRef<NodeJS.Timeout | null>(null)
   const lastSeekDragEndTime = useRef<number>(0)
   // Suppress next click briefly after certain touch interactions (seek end / UI toggle)
@@ -203,6 +186,27 @@ export default function VideoPlayer({
     currentTimeRef.current = next
     player.seekTo(next, 'seconds')
   }
+  const {
+    lastTapTime,
+    lastTapWasDouble,
+    sideSingleTapTimer,
+    handleLeftAreaTouchEnd,
+    handleRightAreaTouchEnd,
+    handleRotatedContainerTouchEnd
+  } = useMobilePlayerTouches({
+    isMobile,
+    mobileUIVisible,
+    setMobileUIVisible,
+    scheduleMobileHide,
+    clearMobileHide,
+    rotationTransitioning,
+    fullscreenTransitioning,
+    handleSeekRelative,
+    setActionIcon,
+    setActionText,
+    setActionSide,
+    suppressClickTemporary
+  })
   const handlePlayPause = () => setPlaying(p => !p)
   const handlePlaybackRateChange = (rate: number) => setPlaybackRate(rate)
   const handleVolumeChange = (v: number) => setVolume(v)
@@ -229,89 +233,6 @@ export default function VideoPlayer({
     // Reset mobile UI hide timer when user interacts
     setMobileUIVisible(true)
     scheduleMobileHide()
-  }
-
-  // Per-area touch handlers for reliable double-tap detection
-  const handleEdgeTouchEnd = (side: 'left' | 'right', e: React.TouchEvent) => {
-    if (!isMobile) return
-    // Prevent the touch from bubbling to the rotated container which would toggle UI
-    e.preventDefault()
-    e.stopPropagation()
-    const t = e.changedTouches[0]
-    const now = Date.now()
-    const dt = now - sideTapTime.current[side]
-    const dx = Math.abs(t.clientX - lastTapX.current)
-    const dy = Math.abs(t.clientY - lastTapY.current)
-    const isDouble = dt > 0 && dt < 350 && dx < 40 && dy < 40
-
-    // If we're mid-transition, ignore single taps but still allow double-tap seeks
-    if ((fullscreenTransitioning.current || rotationTransitioning.current) && !isDouble) return
-
-    if (isDouble) {
-      // Cancel any pending single-tap action for this side
-      const timer = sideSingleTapTimer.current[side]
-      if (timer) {
-        clearTimeout(timer)
-        sideSingleTapTimer.current[side] = null
-      }
-
-      handleSeekRelative(side === 'left' ? -10 : 10)
-      // Use side overlay only; clear generic action icon/text to avoid flicker
-      setActionIcon(null)
-      setActionText(null)
-      setActionSide(side)
-      lastTapWasDouble.current = true
-      window.setTimeout(() => (lastTapWasDouble.current = false), 400)
-    } else {
-      const existingTimer = sideSingleTapTimer.current[side]
-      if (existingTimer) clearTimeout(existingTimer)
-      sideSingleTapTimer.current[side] = window.setTimeout(() => {
-        sideSingleTapTimer.current[side] = null
-        setMobileUIVisible(prev => {
-          const next = !prev
-          if (next) scheduleMobileHide()
-          else clearMobileHide()
-          return next
-        })
-        // suppress the following click to avoid accidental play/pause
-        suppressClickTemporary()
-      }, 300)
-    }
-
-    sideTapTime.current[side] = now
-    lastTapX.current = t.clientX
-    lastTapY.current = t.clientY
-  }
-
-  const handleLeftAreaTouchEnd = (e: React.TouchEvent) => handleEdgeTouchEnd('left', e)
-  const handleRightAreaTouchEnd = (e: React.TouchEvent) => handleEdgeTouchEnd('right', e)
-
-  // Handle single-tap on rotated container to show mobile UI (ignore when a double-tap just occurred)
-  const handleRotatedContainerTouchEnd = (e: React.TouchEvent) => {
-    if (!isMobile) return
-    if (rotationTransitioning.current) return
-    if (lastTapWasDouble.current) return
-    // If the touch was on an interactive element (button/input/etc), ignore here
-    const t = e.changedTouches[0]
-    const el = document.elementFromPoint(t.clientX, t.clientY) as Element | null
-    if (el && el.closest('button, input, textarea, [data-player-controls], [data-player-seekbar]'))
-      return
-
-    // Toggle UI: hide when currently visible, show when hidden
-    // Prevent the synthetic click that follows touchend
-    e.preventDefault()
-    e.stopPropagation()
-
-    if (mobileUIVisible) {
-      setMobileUIVisible(false)
-      clearMobileHide()
-    } else {
-      setMobileUIVisible(true)
-      scheduleMobileHide()
-    }
-
-    // suppress the next click to avoid accidental play/pause toggle
-    suppressClickTemporary()
   }
 
   const handleSeekbarTouch = useMobileSeekbarTouch({
@@ -371,7 +292,6 @@ export default function VideoPlayer({
       if (rotationTransitionTimer.current) clearTimeout(rotationTransitionTimer.current)
       if (sideSingleTapTimer.current.left) clearTimeout(sideSingleTapTimer.current.left)
       if (sideSingleTapTimer.current.right) clearTimeout(sideSingleTapTimer.current.right)
-      if (mobileHideTimer.current) clearTimeout(mobileHideTimer.current as unknown as number)
       if (hideUITimer.current) clearTimeout(hideUITimer.current as unknown as number)
     }
   }, [])

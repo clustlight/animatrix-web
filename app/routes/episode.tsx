@@ -1,6 +1,6 @@
 import type { Episode, Season, Series } from '../types'
 import type { Route } from './+types/episode'
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router'
 import VideoPlayer from '~/components/player/VideoPlayer'
 import { getApiBaseUrl } from '../lib/config'
@@ -10,6 +10,7 @@ import { useToast } from '../components/providers/ToastProvider'
 import { ShareDialog } from '../components/dialogs/ShareDialog'
 import { useEpisodeDownloader } from '../hooks/useEpisodeDownloader'
 import { useEpisodeNavigation } from '../hooks/useEpisodeNavigation'
+import { useEpisodeShare } from '../hooks/useEpisodeShare'
 
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url, { headers: { 'Content-Type': 'application/json' } })
@@ -138,26 +139,14 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
   const { showToast } = useToast()
 
   // --- 共有リンクダイアログ用state ---
-  const [shareOpen, setShareOpen] = useState(false)
-  const [shareIncludeTime, setShareIncludeTime] = useState(true)
-  const [currentTime, setCurrentTime] = useState(0)
-
-  // VideoPlayerの再生位置を取得するためのコールバック
-  const handleTimeUpdate = useCallback((sec: number) => {
-    setCurrentTime(sec)
-  }, [])
-
-  // 共有リンク生成
-  const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''
-  const episodeUrl = `/episode/${currentEpisodeData.episode_id}`
-  let shareUrl = baseUrl + episodeUrl
-  if (shareIncludeTime && currentTime > 0) {
-    // t=1m30s形式で
-    const min = Math.floor(currentTime / 60)
-    const sec = Math.floor(currentTime % 60)
-    shareUrl += `?t=${min > 0 ? `${min}m` : ''}${sec}s`
-  }
-
+  const {
+    open: shareOpen,
+    setOpen: setShareOpen,
+    includeTime: shareIncludeTime,
+    setIncludeTime: setShareIncludeTime,
+    url: shareUrl,
+    handleTimeUpdate
+  } = useEpisodeShare(currentEpisodeData.episode_id)
   return (
     <main className='flex flex-col items-center pt-2 pb-4 min-h-screen bg-background text-foreground'>
       <title>{pageTitle}</title>
