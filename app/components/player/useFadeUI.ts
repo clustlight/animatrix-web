@@ -6,13 +6,11 @@ import { useEffect, useRef, useState } from 'react'
 export function useFadeUI({ isFullscreen }: { isFullscreen: boolean }) {
   // UI visibility states
   const [fadeOut, setFadeOut] = useState(false)
-  const [shortcutActive, setShortcutActive] = useState(false)
   const [hovered, setHovered] = useState(false)
 
   // Timer refs
   const fadeOutTimer = useRef<NodeJS.Timeout | null>(null)
   const hoveredTimer = useRef<NodeJS.Timeout | null>(null)
-  const shortcutTimer = useRef<NodeJS.Timeout | null>(null)
 
   // Handle hover timer in fullscreen
   useEffect(() => {
@@ -66,19 +64,9 @@ export function useFadeUI({ isFullscreen }: { isFullscreen: boolean }) {
     }
   }, [fadeOut])
 
-  // Cleanup shortcut timer
-  useEffect(() => {
-    return () => {
-      clearTimeout(shortcutTimer.current!)
-      shortcutTimer.current = null
-    }
-  }, [])
-
   return {
     fadeOut,
-    shortcutActive,
     hovered,
-    setHovered,
-    setShortcutActive
+    setHovered
   }
 }

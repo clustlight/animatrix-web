@@ -1,13 +1,16 @@
 import type { Episode, Season, Series } from '../types'
 import type { Route } from './+types/episode'
-import { useState, useCallback, useEffect } from 'react'
-import { Link, useNavigate, useLocation } from 'react-router'
+import { useState, useEffect } from 'react'
+import { Link, useLocation } from 'react-router'
 import VideoPlayer from '~/components/player/VideoPlayer'
 import { getApiBaseUrl } from '../lib/config'
 import { EpisodeTimestamp, EpisodeList, SeasonTabs } from '../components/lists/Episode'
 import { MdDownload, MdShare } from 'react-icons/md'
 import { useToast } from '../components/providers/ToastProvider'
 import { ShareDialog } from '../components/dialogs/ShareDialog'
+import { useEpisodeDownloader } from '../hooks/useEpisodeDownloader'
+import { useEpisodeNavigation } from '../hooks/useEpisodeNavigation'
+import { useEpisodeShare } from '../hooks/useEpisodeShare'
 
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url, { headers: { 'Content-Type': 'application/json' } })
@@ -28,64 +31,6 @@ export async function clientLoader({ params }: Route.LoaderArgs) {
   } catch (error) {
     return { error: error instanceof Error ? error.message : 'Unknown error' }
   }
-}
-
-type DownloaderResult = {
-  progress: number | null
-  download: () => Promise<void>
-  error: string | null
-}
-
-function useEpisodeDownloader(episodeData: Episode): DownloaderResult {
-  const [progress, setProgress] = useState<number | null>(null)
-  const [error, setError] = useState<string | null>(null)
-
-  const download = useCallback(async () => {
-    setProgress(0)
-    setError(null)
-    try {
-      const res = await fetch(episodeData.video_url, { credentials: 'include' })
-      if (!res.body) throw new Error('Streaming is not supported')
-      const contentLength = Number(res.headers.get('Content-Length'))
-      const reader = res.body.getReader()
-      let receivedLength = 0
-      const chunks: Uint8Array[] = []
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        if (value) {
-          chunks.push(value)
-          receivedLength += value.length
-          if (contentLength) setProgress(Math.round((receivedLength / contentLength) * 100))
-        }
-      }
-      // Merge received Uint8Array chunks into one contiguous buffer
-      const merged = new Uint8Array(receivedLength)
-      let position = 0
-      for (const chunk of chunks) {
-        merged.set(chunk, position)
-        position += chunk.length
-      }
-      const blob = new Blob([merged])
-      const url = URL.createObjectURL(blob)
-
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `${episodeData.episode_id}__${episodeData.title}.mp4`
-      document.body.appendChild(a)
-      a.click()
-      setTimeout(() => {
-        document.body.removeChild(a)
-        URL.revokeObjectURL(url)
-      }, 1000)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Download failed')
-    } finally {
-      setProgress(null)
-    }
-  }, [episodeData.video_url, episodeData.episode_id, episodeData.title])
-
-  return { progress, download, error }
 }
 
 function Breadcrumbs({ seriesData, seasonData }: { seriesData: Series; seasonData: Season }) {
@@ -177,148 +122,31 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
   const [selectedSeasonId, setSelectedSeasonId] = useState<string>(currentSeasonData.season_id)
   const [episodeList, setEpisodeList] = useState<Episode[]>(currentSeasonData.episodes || [])
   const [seasonList, setSeasonList] = useState<Season[]>(currentSeriesData.seasons || [])
-
+  const { autoPlay, startFullscreen, loadEpisodeInPlace, handleVideoEnded } = useEpisodeNavigation({
+    currentEpisodeId: currentEpisodeData.episode_id,
+    episodeList,
+    seasonList,
+    selectedSeasonId,
+    setCurrentEpisode: setCurrentEpisodeData,
+    setCurrentSeason: setCurrentSeasonData,
+    setCurrentSeries: setCurrentSeriesData,
+    setSelectedSeasonId,
+    setEpisodeList,
+    setSeasonList
+  })
+  const { progress, download, error } = useEpisodeDownloader(currentEpisodeData)
   const pageTitle = `${currentEpisodeData.title} | animatrix`
-
-  // selectedSeasonIdが変わったらseasonとseriesを再取得
-  useEffect(() => {
-    if (!selectedSeasonId) return
-    getApiBaseUrl().then(async baseUrl => {
-      try {
-        const season = await fetchJson<Season>(`${baseUrl}/v1/season/${selectedSeasonId}`)
-        setEpisodeList(season.episodes || [])
-        // seasonのseries_idからseriesを再取得
-        const series = await fetchJson<Series>(`${baseUrl}/v1/series/${season.series_id}`)
-        setSeasonList(series.seasons || [])
-      } catch {
-        setEpisodeList([])
-        setSeasonList([])
-      }
-    })
-  }, [selectedSeasonId])
-
-  const { progress, download, error } = useEpisodeDownloader(episodeData)
-  const navigate = useNavigate()
-  const [autoPlay, setAutoPlay] = useState(false)
-  const [startFullscreen, setStartFullscreen] = useState(false)
-
-  // 次のエピソード・シーズン判定ロジック
-  const getNextEpisode = () => {
-    if (!episodeList.length) return null
-    const currentIdx = episodeList.findIndex(e => e.episode_id === currentEpisodeData.episode_id)
-    if (currentIdx < 0) return null
-
-    // 次の話が同じシーズンにある場合
-    if (currentIdx + 1 < episodeList.length) {
-      return {
-        seasonId: selectedSeasonId,
-        episodeId: episodeList[currentIdx + 1].episode_id
-      }
-    }
-
-    // 次のシーズンがある場合
-    const nextSeasonIdx = seasonList.findIndex(s => s.season_id === selectedSeasonId) + 1
-    if (nextSeasonIdx < seasonList.length) {
-      const nextSeason = seasonList[nextSeasonIdx]
-      if (nextSeason.season_id) {
-        return {
-          seasonId: nextSeason.season_id,
-          episodeId: nextSeason.episodes?.[0]?.episode_id
-        }
-      }
-    }
-    return null
-  }
-
-  // Load another episode *in-place* (do not unmount VideoPlayer) so fullscreen can be preserved
-  const loadEpisodeInPlace = async (
-    episodeId: string,
-    opts?: { keepFullscreen?: boolean; autoPlay?: boolean }
-  ) => {
-    try {
-      const baseUrl = await getApiBaseUrl()
-      const [ep, season] = await Promise.all([
-        fetchJson<Episode>(`${baseUrl}/v1/episode/${episodeId}`),
-        fetchJson<Season>(`${baseUrl}/v1/season/${episodeId.slice(0, episodeId.lastIndexOf('_'))}`)
-      ])
-      const series = await fetchJson<Series>(`${baseUrl}/v1/series/${season.series_id}`)
-
-      // update state in-place (VideoPlayer remains mounted)
-      setCurrentEpisodeData(ep)
-      setCurrentSeasonData(season)
-      setCurrentSeriesData(series)
-      setSelectedSeasonId(season.season_id)
-      setEpisodeList(season.episodes || [])
-      setSeasonList(series.seasons || [])
-
-      // update URL/history so back/forward work and pass flags
-      const usr = { autoPlay: !!opts?.autoPlay, keepFullscreen: !!opts?.keepFullscreen }
-      const newState = { ...window.history.state, usr }
-      window.history.pushState(newState, '', `/episode/${ep.episode_id}`)
-
-      // update local playback flags
-      setAutoPlay(!!opts?.autoPlay)
-      setStartFullscreen(!!opts?.keepFullscreen)
-
-      // update document title
-      if (typeof document !== 'undefined') document.title = `${ep.title} | animatrix`
-    } catch {
-      // fallback to full navigation if something goes wrong
-      const next = getNextEpisode()
-      if (next && next.episodeId)
-        navigate(`/episode/${next.episodeId}`, {
-          state: { autoPlay: true, keepFullscreen: !!opts?.keepFullscreen }
-        })
-    }
-  }
-
-  // 動画終了時のコールバック
-  const handleVideoEnded = (opts?: { keepFullscreen?: boolean }) => {
-    const next = getNextEpisode()
-    if (next && next.episodeId) {
-      // load next episode in-place so the player DOM stays mounted and fullscreen is preserved
-      loadEpisodeInPlace(next.episodeId, { keepFullscreen: !!opts?.keepFullscreen, autoPlay: true })
-    }
-  }
-
-  // ページ遷移後に自動再生する
-  useEffect(() => {
-    // location.state から autoPlay と keepFullscreen を取得
-    const state = window.history.state && window.history.state.usr
-    setAutoPlay(state && state.autoPlay === true)
-    setStartFullscreen(state && state.keepFullscreen === true)
-
-    // 再生フラグと keepFullscreen を消す（1回だけ有効にする）
-    if (state && (state.autoPlay || state.keepFullscreen)) {
-      const newUsr = { ...state, autoPlay: false, keepFullscreen: false }
-      const newState = { ...window.history.state, usr: newUsr }
-      window.history.replaceState(newState, '')
-    }
-  }, [currentEpisodeData.episode_id])
-
   const { showToast } = useToast()
 
   // --- 共有リンクダイアログ用state ---
-  const [shareOpen, setShareOpen] = useState(false)
-  const [shareIncludeTime, setShareIncludeTime] = useState(true)
-  const [currentTime, setCurrentTime] = useState(0)
-
-  // VideoPlayerの再生位置を取得するためのコールバック
-  const handleTimeUpdate = useCallback((sec: number) => {
-    setCurrentTime(sec)
-  }, [])
-
-  // 共有リンク生成
-  const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''
-  const episodeUrl = `/episode/${currentEpisodeData.episode_id}`
-  let shareUrl = baseUrl + episodeUrl
-  if (shareIncludeTime && currentTime > 0) {
-    // t=1m30s形式で
-    const min = Math.floor(currentTime / 60)
-    const sec = Math.floor(currentTime % 60)
-    shareUrl += `?t=${min > 0 ? `${min}m` : ''}${sec}s`
-  }
-
+  const {
+    open: shareOpen,
+    setOpen: setShareOpen,
+    includeTime: shareIncludeTime,
+    setIncludeTime: setShareIncludeTime,
+    url: shareUrl,
+    handleTimeUpdate
+  } = useEpisodeShare(currentEpisodeData.episode_id)
   return (
     <main className='flex flex-col items-center pt-2 pb-4 min-h-screen bg-background text-foreground'>
       <title>{pageTitle}</title>

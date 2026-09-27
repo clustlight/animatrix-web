@@ -1,6 +1,8 @@
 import React from 'react'
+import type { ReactNode } from 'react'
 import ReactPlayer from 'react-player'
 import VideoPlayerControls from './VideoPlayerControls'
+import { ActionOverlay } from './VideoPlayerActionOverlay'
 
 type VideoPlayerPCProps = {
   containerRef: React.RefObject<HTMLDivElement | null>
@@ -35,6 +37,8 @@ type VideoPlayerPCProps = {
   handleVolumeChange: (v: number) => void
   isReady: boolean
   aspectRatio: number | null
+  actionIcon: ReactNode | null
+  actionText: string | null
 }
 
 export default function VideoPlayerPC({
@@ -69,7 +73,9 @@ export default function VideoPlayerPC({
   handlePlaybackRateChange,
   handleVolumeChange,
   isReady,
-  aspectRatio
+  aspectRatio,
+  actionIcon,
+  actionText
 }: VideoPlayerPCProps) {
   return (
     <div
@@ -139,6 +145,12 @@ export default function VideoPlayerPC({
           />
         </>
       </div>
+
+      {(actionIcon || actionText) && (
+        <div className='absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none'>
+          <ActionOverlay icon={actionIcon} text={actionText} />
+        </div>
+      )}
 
       {/* Controls */}
       {showUI && isUIVisible && (

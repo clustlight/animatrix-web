@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useCallback } from 'react'
+import { clamp } from './playerUtils'
 
 type VideoPlayerVolumeBarProps = {
   volume: number
@@ -21,15 +22,13 @@ export default function VideoPlayerVolumeBar({
       e.preventDefault()
       e.stopPropagation()
       const delta = e.deltaY < 0 ? 0.1 : -0.1
-      const newVolume = Math.max(0, Math.min(1, +(volume + delta).toFixed(2)))
+      const newVolume = clamp(+(volume + delta).toFixed(2), 0, 1)
       if (newVolume !== volume) onVolumeChange(newVolume)
     }
 
     el.addEventListener('wheel', handleWheel, { passive: false })
     return () => el.removeEventListener('wheel', handleWheel)
   }, [volume, onVolumeChange])
-
-  const clamp = (val: number, min: number, max: number) => Math.max(min, Math.min(max, val))
 
   const updateVolumeFromClientX = useCallback(
     (clientX: number) => {

@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import type { RefObject } from 'react'
+import { clamp, getSeekTimeFromPoint } from './playerUtils'
 
 type VideoPlayerSeekBarProps = {
   currentTime: number
@@ -69,8 +70,6 @@ export default function VideoPlayerSeekBar({
     lastRotationDegRef.current = rotationDeg
   }, [rotationDeg, seeking])
 
-  const clamp = (val: number, min: number, max: number) => Math.max(min, Math.min(max, val))
-
   const updateSeekFromClientX = useCallback(
     (clientX: number, clientY?: number) => {
       const bar = barRef.current
@@ -99,27 +98,17 @@ export default function VideoPlayerSeekBar({
         if (dist > 300) return
       }
 
-      // Use the visible bounding box of the bar to compute ratio.
-      // If the bar is visually horizontal, use clientX vs rect.left/width.
-      // If the bar is visually vertical (rotated), use clientY vs rect.top/height
-      let ratio = 0
       // Only consider rotation-based inversion when a rotation container is actually provided
       const isRotated =
         !!(rotationContainerRef && rotationContainerRef.current) && Math.abs(rotationDeg) === 90
-
-      if (rect.width >= rect.height) {
-        ratio = rect.width > 0 ? clamp((clientX - rect.left) / rect.width, 0, 1) : 0
-        // Invert horizontal mapping only when the parent/container is rotated
-        if (isRotated && rotationDeg === -90) ratio = 1 - ratio
-      } else if (clientY != null) {
-        // Vertical bar case (likely due to rotation)
-        const raw = rect.height > 0 ? clamp((clientY - rect.top) / rect.height, 0, 1) : 0
-        // For a container rotated 90deg clockwise, top -> left (0%), bottom -> right (100%).
-        // For -90deg (counterclockwise), top -> right (100%), so invert when rotated.
-        ratio = isRotated && rotationDeg === -90 ? 1 - raw : raw
-      }
-
-      const nextValue = ratio * (duration || 0)
+      const nextValue = getSeekTimeFromPoint({
+        rect,
+        clientX,
+        clientY,
+        duration,
+        rotationDeg,
+        isRotated
+      })
 
       // update prev accepted client coords
       prevClientRef.current = { x: clientX, y: clientY ?? prev?.y ?? 0 }
@@ -291,6 +280,7 @@ export default function VideoPlayerSeekBar({
   const trackClass = expanded ? 'h-3' : 'h-1.5'
   const thumbClass = expanded ? 'w-6 h-6' : 'w-3 h-3'
   const thumbHalfPx = expanded ? 12 : 6
+  const thumbDiameterPx = expanded ? 24 : 12
 
   return (
     <div
@@ -312,7 +302,9 @@ export default function VideoPlayerSeekBar({
       />
       <div
         className={`absolute top-1/2 -translate-y-1/2 ${thumbClass} rounded-full bg-orange-400 shadow pointer-events-none`}
-        style={{ left: `calc(${progressPercent}% - ${thumbHalfPx}px)` }}
+        style={{
+          left: `clamp(0px, calc(${progressPercent}% - ${thumbHalfPx}px), calc(100% - ${thumbDiameterPx}px))`
+        }}
       />
     </div>
   )
