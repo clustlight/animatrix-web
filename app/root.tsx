@@ -5,16 +5,16 @@ import {
   Scripts,
   ScrollRestoration,
   isRouteErrorResponse,
-  useNavigate,
-  Link
+  useNavigate
 } from 'react-router'
 
 import { ToastProvider } from './components/providers/ToastProvider'
 
 import type { Route } from './+types/root'
 import './app.css'
-import { Search } from './components/search/Search'
 import React from 'react'
+import { AppHeader } from './components/headers/AppHeader'
+import { useThemePreference } from './hooks/useThemePreference'
 
 export const links: Route.LinksFunction = () => [
   { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
@@ -53,53 +53,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 export default function App() {
   const [searchParams, setSearchParams] = React.useState('')
   const navigate = useNavigate()
-  const [theme, setTheme] = React.useState<'light' | 'dark'>(() => {
-    if (typeof window === 'undefined') return 'dark'
-    try {
-      const stored = window.localStorage.getItem('theme')
-      if (stored === 'light' || stored === 'dark') return stored
-    } catch {
-      // ignore
-    }
-    try {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-    } catch {
-      return 'dark'
-    }
-  })
-
-  const [hasUserTheme, setHasUserTheme] = React.useState(() => {
-    if (typeof window === 'undefined') return false
-    try {
-      const stored = window.localStorage.getItem('theme')
-      return stored === 'light' || stored === 'dark'
-    } catch {
-      return false
-    }
-  })
-
-  React.useEffect(() => {
-    if (typeof window === 'undefined') return
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-    const applySystemTheme = () => {
-      if (!hasUserTheme) {
-        setTheme(mediaQuery.matches ? 'dark' : 'light')
-      }
-    }
-    applySystemTheme()
-    mediaQuery.addEventListener('change', applySystemTheme)
-    return () => mediaQuery.removeEventListener('change', applySystemTheme)
-  }, [hasUserTheme])
-
-  React.useEffect(() => {
-    if (typeof window === 'undefined') return
-    document.documentElement.classList.toggle('dark', theme === 'dark')
-    if (hasUserTheme) {
-      window.localStorage.setItem('theme', theme)
-    } else {
-      window.localStorage.removeItem('theme')
-    }
-  }, [theme, hasUserTheme])
+  const { theme, toggleTheme } = useThemePreference()
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter' && searchParams.trim()) {
       navigate(`/search?q=${encodeURIComponent(searchParams.trim())}`)
@@ -108,90 +62,13 @@ export default function App() {
 
   return (
     <div className='relative min-h-screen bg-background text-foreground'>
-      {/* Header background only */}
-      <div
-        className='fixed top-0 left-0 w-screen z-40 bg-background/90 border-b border-border shadow-md backdrop-blur-md'
-        style={{
-          minHeight: '70px',
-          height: '70px' // Make the background taller to cover logo and search bar
-        }}
+      <AppHeader
+        searchValue={searchParams}
+        onSearchChange={setSearchParams}
+        onSearchKeyDown={handleKeyDown}
+        theme={theme}
+        onToggleTheme={toggleTheme}
       />
-      {/* Logo & Series link */}
-      <div className='fixed top-3 left-2 md:left-8 z-50 flex items-center gap-4 h-10.5'>
-        <Link
-          to='/'
-          className='font-bold text-foreground hover:text-primary transition-colors cursor-pointer select-none text-lg md:text-xl flex items-center'
-          style={{
-            textShadow: '0 2px 8px #0008',
-            padding: '0.25rem 0.75rem',
-            borderRadius: '0.5rem',
-            height: '42px',
-            display: 'flex',
-            alignItems: 'center'
-          }}
-          aria-label='Go to home'
-        >
-          animatrix
-        </Link>
-        <Link
-          to='/series'
-          className='font-semibold text-muted-foreground hover:text-foreground transition-colors px-3 py-1 rounded flex items-center'
-          style={{
-            textShadow: '0 2px 8px #0008',
-            padding: '0.25rem 0.75rem',
-            borderRadius: '0.5rem',
-            height: '42px',
-            display: 'flex',
-            alignItems: 'center'
-          }}
-          aria-label='Go to series list'
-        >
-          Series
-        </Link>
-      </div>
-      {/* Search bar: fixed at the top (右寄せ&幅1/3) */}
-      <div
-        className={`
-          fixed top-3
-          right-5
-          left-auto
-          z-40
-          flex items-center
-          gap-2
-          w-1/3
-          min-w-50
-          max-w-sm
-        `}
-        style={{
-          height: '42px'
-        }}
-      >
-        <Search
-          value={searchParams}
-          onChange={e => setSearchParams(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder='Search'
-        />
-        <button
-          type='button'
-          className='text-foreground hover:text-primary border border-border bg-card/70 hover:bg-card transition-colors px-3 py-1 rounded text-sm h-full'
-          onClick={() => {
-            const newTheme = theme === 'dark' ? 'light' : 'dark'
-            setHasUserTheme(true)
-            setTheme(newTheme)
-            if (typeof window !== 'undefined') {
-              try {
-                window.localStorage.setItem('theme', newTheme)
-              } catch {
-                // ignore localStorage errors (e.g. private mode)
-              }
-            }
-          }}
-          aria-label='Toggle light and dark theme'
-        >
-          {theme === 'dark' ? 'Light' : 'Dark'}
-        </button>
-      </div>
       {/* Main content */}
       <div className='pt-20'>
         <Outlet />

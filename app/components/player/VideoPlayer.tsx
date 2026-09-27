@@ -16,6 +16,7 @@ import { useMobilePlayerUI } from './useMobilePlayerUI'
 import { useMobilePlayerTouches } from './useMobilePlayerTouches'
 import { usePlayerTransitions } from './usePlayerTransitions'
 import { usePlayerVisibility } from './usePlayerVisibility'
+import { usePlayerSourceState } from './usePlayerSourceState'
 
 // Video player component
 type VideoPlayerProps = {
@@ -47,16 +48,8 @@ export default function VideoPlayer({
   const containerRef = useRef<HTMLDivElement | null>(null)
   const rotatedContainerRef = useRef<HTMLDivElement | null>(null)
 
-  // State
-  const [playing, setPlaying] = useState(autoPlay)
-  const [currentTime, setCurrentTime] = useState(0)
-  const currentTimeRef = useRef(0)
-  const [duration, setDuration] = useState(0)
   const [volume, setVolume] = usePersistedVolume()
   const [playbackRate, setPlaybackRate] = useState(1.0)
-  const [isReady, setIsReady] = useState(false)
-  const [aspectRatio, setAspectRatio] = useState<number | null>(null)
-  const [hasSeeked, setHasSeeked] = useState(false)
   // Mobile detection
   const [isMobile, setIsMobile] = useState(
     typeof window !== 'undefined' ? window.matchMedia('(max-width:600px)').matches : false
@@ -88,6 +81,7 @@ export default function VideoPlayer({
   const { isFullscreen, toggleFullscreen } = useFullscreen(
     containerRef as unknown as React.RefObject<HTMLElement>
   )
+  const transitions = usePlayerTransitions({ toggleFullscreen, suppressClickTemporary })
   const {
     pendingSeekOnReady,
     fullscreenTransitioning,
@@ -95,7 +89,26 @@ export default function VideoPlayer({
     rotationDeg,
     toggleRotation,
     handleToggleFullscreen
-  } = usePlayerTransitions({ toggleFullscreen, suppressClickTemporary })
+  } = transitions
+  const {
+    playing,
+    setPlaying,
+    currentTime,
+    setCurrentTime,
+    currentTimeRef,
+    duration,
+    setDuration,
+    isReady,
+    aspectRatio,
+    handleReady
+  } = usePlayerSourceState({
+    playerRef,
+    url,
+    autoPlay,
+    initialSeek,
+    onTimeUpdate,
+    pendingSeekOnReady
+  })
   const { fadeOut, hovered, setHovered } = useFadeUI({
     isFullscreen
   })
@@ -266,27 +279,6 @@ export default function VideoPlayer({
     return () => clearMobileHide()
   }, [isFullscreen, isMobile])
 
-  // Get the video aspect ratio
-  const handleReady = useCallback(() => {
-    setIsReady(true)
-    const video = playerRef.current?.getInternalPlayer() as HTMLVideoElement | null
-    if (video && video.videoWidth && video.videoHeight) {
-      setAspectRatio(video.videoWidth / video.videoHeight)
-    }
-    // If a seek was requested prior to remount (fullscreen toggle), apply it now
-    if (pendingSeekOnReady.current) {
-      const t = currentTimeRef.current
-      pendingSeekOnReady.current = false
-      // clamp to known duration when available and ignore invalid values
-      const valid = Number.isFinite(t) && t >= 0
-      if (valid) {
-        const target = duration > 0 ? Math.min(t, duration) : t
-        currentTimeRef.current = target
-        playerRef.current?.seekTo(target, 'seconds')
-      }
-    }
-  }, [duration])
-
   // Update mobile flag on resize/orientation change
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -296,23 +288,10 @@ export default function VideoPlayer({
     return () => mq.removeEventListener?.('change', onChange)
   }, [])
 
-  useEffect(() => {
-    setPlaying(autoPlay)
-  }, [autoPlay, url])
-
-  useEffect(() => {
-    setHasSeeked(false)
-  }, [url, initialSeek])
-
   // Reset transient / non-video UI state when the source URL (episode) changes.
   // VideoPlayer intentionally stays mounted when switching episodes so we must
   // explicitly clear any UI that should not persist across episodes.
   useEffect(() => {
-    setIsReady(false)
-    setAspectRatio(null)
-    setCurrentTime(0)
-    currentTimeRef.current = 0
-
     // Clear transient UI overlays and ensure the UI is visible for the new episode
     setActionIcon(null)
     setActionText(null)
@@ -321,27 +300,9 @@ export default function VideoPlayer({
     clearMobileHide()
     resetShowUI()
 
-    // Reset pending/interaction refs so the new episode starts clean
-    pendingSeekOnReady.current = false
+    // Reset interaction refs so the new episode starts clean
     isUserSeekingRef.current = false
   }, [resetShowUI, url])
-
-  useEffect(() => {
-    if (isReady && initialSeek != null && !hasSeeked) {
-      currentTimeRef.current = initialSeek
-      playerRef.current?.seekTo(initialSeek, 'seconds')
-      setHasSeeked(true)
-    }
-  }, [isReady, initialSeek, hasSeeked])
-
-  useEffect(() => {
-    if (!onTimeUpdate) return
-    const interval = setInterval(() => {
-      const sec = playerRef.current?.getCurrentTime?.() ?? 0
-      onTimeUpdate(sec)
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [onTimeUpdate])
 
   const handleSeekBarDrag = (dragging: boolean) => {
     isUserSeekingRef.current = dragging

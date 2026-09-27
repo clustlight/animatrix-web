@@ -6,9 +6,7 @@ type SeasonTabsProps = {
   seasons: Season[]
   activeSeason: number
   onTabClick: (idx: number, seasonId: string) => void
-  setEditSeasonId: (id: string) => void
-  setEditSeasonTitle: (title: string) => void
-  setEditSeasonModalOpen: (open: boolean) => void
+  onEditSeason: (season: Season) => void
   seriesPortraitUrl: string
 }
 
@@ -16,9 +14,7 @@ export function SeasonTabs({
   seasons,
   activeSeason,
   onTabClick,
-  setEditSeasonId,
-  setEditSeasonTitle,
-  setEditSeasonModalOpen,
+  onEditSeason,
   seriesPortraitUrl
 }: SeasonTabsProps) {
   const [isMobile, setIsMobile] = useState(false)
@@ -60,9 +56,8 @@ export function SeasonTabs({
             className='inline-flex items-center justify-center gap-2 px-3 py-2 rounded bg-secondary/70 text-secondary-foreground hover:bg-secondary transition-colors text-sm'
             title='シーズン名編集'
             onClick={() => {
-              setEditSeasonId(seasons[activeSeason]?.season_id)
-              setEditSeasonTitle(seasons[activeSeason]?.season_title)
-              setEditSeasonModalOpen(true)
+              const season = seasons[activeSeason]
+              if (season) onEditSeason(season)
             }}
             type='button'
           >
@@ -82,9 +77,8 @@ export function SeasonTabs({
           className='text-muted-foreground hover:text-foreground flex items-center text-xs cursor-pointer'
           title='シーズン名編集'
           onClick={() => {
-            setEditSeasonId(seasons[activeSeason]?.season_id)
-            setEditSeasonTitle(seasons[activeSeason]?.season_title)
-            setEditSeasonModalOpen(true)
+            const season = seasons[activeSeason]
+            if (season) onEditSeason(season)
           }}
           type='button'
           aria-label='シーズン名編集'
