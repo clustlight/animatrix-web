@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Series } from '../types'
 import { getApiBaseUrl } from '../lib/config'
 import { SeriesGrid } from '../components/lists/SeriesGrid'
@@ -46,7 +46,6 @@ export default function SeriesList({
   loaderData?: { seriesList?: Series[]; error?: string }
 }) {
   const [allSeries, setAllSeries] = useState<Series[]>(loaderData?.seriesList || [])
-  const [displayedSeries, setDisplayedSeries] = useState<Series[]>([])
   const [error, setError] = useState<string | null>(loaderData?.error || null)
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
   const [page, setPage] = useState(1)
@@ -54,6 +53,15 @@ export default function SeriesList({
   const loaderRef = useRef<HTMLDivElement | null>(null)
 
   const pageTitle = `Series List | animatrix`
+  const displayedSeries = useMemo(
+    () =>
+      [...allSeries]
+        .sort((a, b) =>
+          sortOrder === 'asc' ? a.title.localeCompare(b.title) : b.title.localeCompare(a.title)
+        )
+        .slice(0, page * PAGE_SIZE),
+    [allSeries, page, sortOrder]
+  )
 
   useEffect(() => {
     if (!loaderData) {
@@ -63,16 +71,6 @@ export default function SeriesList({
       })
     }
   }, [loaderData])
-
-  useEffect(() => {
-    setDisplayedSeries(
-      [...allSeries]
-        .sort((a, b) =>
-          sortOrder === 'asc' ? a.title.localeCompare(b.title) : b.title.localeCompare(a.title)
-        )
-        .slice(0, page * PAGE_SIZE)
-    )
-  }, [allSeries, sortOrder, page])
 
   useEffect(() => {
     if (!loaderRef.current) return

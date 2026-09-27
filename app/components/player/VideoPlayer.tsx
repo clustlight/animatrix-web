@@ -14,6 +14,8 @@ import { useMobileSeekbarTouch } from './useMobileSeekbarTouch'
 import { usePlayerPlaybackEvents } from './usePlayerPlaybackEvents'
 import { useMobilePlayerUI } from './useMobilePlayerUI'
 import { useMobilePlayerTouches } from './useMobilePlayerTouches'
+import { usePlayerTransitions } from './usePlayerTransitions'
+import { usePlayerVisibility } from './usePlayerVisibility'
 
 // Video player component
 type VideoPlayerProps = {
@@ -44,22 +46,6 @@ export default function VideoPlayer({
   const playerRef = useRef<ReactPlayer>(null as unknown as ReactPlayer)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const rotatedContainerRef = useRef<HTMLDivElement | null>(null)
-  // rotation direction for fullscreen mobile (90 or -90)
-  const [rotationDeg, setRotationDeg] = useState<number>(90)
-  const toggleRotation = () => {
-    // guard against stray touch/seek while layout is animating/transforming
-    rotationTransitioning.current = true
-    if (rotationTransitionTimer.current) clearTimeout(rotationTransitionTimer.current)
-    rotationTransitionTimer.current = window.setTimeout(() => {
-      rotationTransitioning.current = false
-      rotationTransitionTimer.current = null
-    }, 400)
-
-    // briefly suppress click-to-toggle-play that can follow touch
-    suppressClickTemporary()
-
-    setRotationDeg(d => (d === 90 ? -90 : 90))
-  }
 
   // State
   const [playing, setPlaying] = useState(autoPlay)
@@ -80,7 +66,6 @@ export default function VideoPlayer({
   const [actionIcon, setActionIcon] = useState<ReactNode | null>(null)
   const [actionText, setActionText] = useState<string | null>(null)
   const [actionSide, setActionSide] = useState<'left' | 'right' | null>(null)
-  const [showUI, setShowUI] = useState(true)
   // Mobile fullscreen UI visibility (auto-hide after inactivity)
   const {
     visible: mobileUIVisible,
@@ -88,14 +73,13 @@ export default function VideoPlayer({
     scheduleHide: scheduleMobileHide,
     clearHideTimer: clearMobileHide
   } = useMobilePlayerUI()
-  const hideUITimer = useRef<NodeJS.Timeout | null>(null)
   const lastSeekDragEndTime = useRef<number>(0)
   // Suppress next click briefly after certain touch interactions (seek end / UI toggle)
   const suppressNextClick = useRef<boolean>(false)
-  const suppressClickTemporary = (ms = 350) => {
+  const suppressClickTemporary = useCallback((ms = 350) => {
     suppressNextClick.current = true
     window.setTimeout(() => (suppressNextClick.current = false), ms)
-  }
+  }, [])
 
   // Track whether the user is actively dragging/seeking (set by SeekBar via onDrag)
   const isUserSeekingRef = useRef<boolean>(false)
@@ -104,9 +88,26 @@ export default function VideoPlayer({
   const { isFullscreen, toggleFullscreen } = useFullscreen(
     containerRef as unknown as React.RefObject<HTMLElement>
   )
+  const {
+    pendingSeekOnReady,
+    fullscreenTransitioning,
+    rotationTransitioning,
+    rotationDeg,
+    toggleRotation,
+    handleToggleFullscreen
+  } = usePlayerTransitions({ toggleFullscreen, suppressClickTemporary })
   const { fadeOut, hovered, setHovered } = useFadeUI({
     isFullscreen
   })
+  const { showUI, isUIVisible, handleMouseEnter, handleMouseLeave, resetShowUI } =
+    usePlayerVisibility({
+      containerRef,
+      isFullscreen,
+      playing,
+      fadeOut,
+      hovered,
+      setHovered
+    })
   const inputFocused = useInputFocus()
   const { handleEnded, onPlayerProgress, onPlayerPlay, onPlayerPause } = usePlayerPlaybackEvents({
     playerRef,
@@ -120,30 +121,6 @@ export default function VideoPlayer({
     setCurrentTime,
     isUserSeekingRef
   })
-
-  // Preserve currentTime across remounts when switching fullscreen (we render a different ReactPlayer node)
-  const pendingSeekOnReady = useRef(false)
-  // prevent accidental touch / seek events while the browser/DOM is transitioning into fullscreen
-  const fullscreenTransitioning = useRef(false)
-  const fullscreenTransitionTimer = useRef<number | null>(null)
-  // guard for rotation transitions (toggleRotation can cause layout/transform changes that generate stray touch events)
-  const rotationTransitioning = useRef(false)
-  const rotationTransitionTimer = useRef<number | null>(null)
-
-  const handleToggleFullscreen = () => {
-    // Restore the latest playback time if fullscreen changes remount the player
-    pendingSeekOnReady.current = true
-
-    // mark transition window (ignore touch/seeks for a short duration)
-    fullscreenTransitioning.current = true
-    if (fullscreenTransitionTimer.current) clearTimeout(fullscreenTransitionTimer.current)
-    fullscreenTransitionTimer.current = window.setTimeout(() => {
-      fullscreenTransitioning.current = false
-      fullscreenTransitionTimer.current = null
-    }, 700)
-
-    toggleFullscreen()
-  }
 
   // Keyboard shortcuts
   useVideoPlayerShortcuts({
@@ -250,22 +227,6 @@ export default function VideoPlayer({
     scheduleMobileHide,
     suppressClickTemporary
   })
-  // Show/hide UI
-  const handleMouseEnter = () => {
-    setShowUI(true)
-    if (hideUITimer.current) {
-      clearTimeout(hideUITimer.current)
-      hideUITimer.current = null
-    }
-  }
-  const handleMouseLeave = () => {
-    if (hideUITimer.current) clearTimeout(hideUITimer.current)
-    hideUITimer.current = setTimeout(() => setShowUI(false), 3000)
-  }
-
-  // --- Cursor & UI fade logic ---
-  const [mouseMoved, setMouseMoved] = useState(true)
-
   // Hide action overlay after delay
   useEffect(() => {
     if (actionIcon || actionText) {
@@ -285,14 +246,11 @@ export default function VideoPlayer({
     }
   }, [actionSide])
 
-  // Cleanup timers on unmount (transition/single-tap/hide timers)
+  // Cleanup single-tap timers on unmount.
   useEffect(() => {
     return () => {
-      if (fullscreenTransitionTimer.current) clearTimeout(fullscreenTransitionTimer.current)
-      if (rotationTransitionTimer.current) clearTimeout(rotationTransitionTimer.current)
       if (sideSingleTapTimer.current.left) clearTimeout(sideSingleTapTimer.current.left)
       if (sideSingleTapTimer.current.right) clearTimeout(sideSingleTapTimer.current.right)
-      if (hideUITimer.current) clearTimeout(hideUITimer.current as unknown as number)
     }
   }, [])
 
@@ -307,40 +265,6 @@ export default function VideoPlayer({
     }
     return () => clearMobileHide()
   }, [isFullscreen, isMobile])
-
-  // Cursor display in fullscreen
-  useEffect(() => {
-    if (!isFullscreen) {
-      if (containerRef.current) containerRef.current.style.cursor = ''
-      return
-    }
-    if (containerRef.current)
-      containerRef.current.style.cursor = !mouseMoved || fadeOut || !showUI ? 'none' : ''
-  }, [isFullscreen, showUI, fadeOut, mouseMoved])
-
-  // Show UI on mouse move in fullscreen
-  useEffect(() => {
-    const el = containerRef.current
-    if (!el) return
-    const handleMouseMove = () => {
-      setMouseMoved(true)
-      setHovered(true)
-    }
-    el.addEventListener('mousemove', handleMouseMove)
-    return () => el.removeEventListener('mousemove', handleMouseMove)
-  }, [setHovered])
-
-  // Hide cursor if fadeOut or UI hidden
-  useEffect(() => {
-    if (!isFullscreen) {
-      setMouseMoved(true)
-      return
-    }
-    if (fadeOut || !showUI) setMouseMoved(false)
-  }, [fadeOut, showUI, isFullscreen])
-
-  // UI visibility condition
-  const isUIVisible = isFullscreen ? hovered && !fadeOut : hovered || !playing
 
   // Get the video aspect ratio
   const handleReady = useCallback(() => {
@@ -395,12 +319,12 @@ export default function VideoPlayer({
     setActionSide(null)
     setMobileUIVisible(true)
     clearMobileHide()
-    setShowUI(true)
+    resetShowUI()
 
     // Reset pending/interaction refs so the new episode starts clean
     pendingSeekOnReady.current = false
     isUserSeekingRef.current = false
-  }, [url])
+  }, [resetShowUI, url])
 
   useEffect(() => {
     if (isReady && initialSeek != null && !hasSeeked) {

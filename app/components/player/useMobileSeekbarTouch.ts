@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react'
 import type React from 'react'
-import { clamp } from './playerUtils'
+import { clamp, getSeekTimeFromPoint } from './playerUtils'
 
 type UseMobileSeekbarTouchOptions = {
   url: string
@@ -77,20 +77,18 @@ export function useMobileSeekbarTouch({
         startedInsideRef.current = startInsideX && startInsideY
 
         if (startedInsideRef.current) {
-          const isVerticalStart = startRect.height > startRect.width
-          const startRatio = isVerticalStart
-            ? (() => {
-                const raw =
-                  startRect.height > 0
-                    ? clamp((touch.clientY - startRect.top) / startRect.height, 0, 1)
-                    : 0
-                return Math.abs(rotationDeg) === 90 && rotationDeg === -90 ? 1 - raw : raw
-              })()
-            : (() => {
-                const x = clamp(touch.clientX, startRect.left, startRect.right)
-                return startRect.width > 0 ? clamp((x - startRect.left) / startRect.width, 0, 1) : 0
-              })()
-          const time = clamp(startRatio * duration, 0, duration)
+          const time = clamp(
+            getSeekTimeFromPoint({
+              rect: startRect,
+              clientX: touch.clientX,
+              clientY: touch.clientY,
+              duration,
+              rotationDeg,
+              isRotated: Math.abs(rotationDeg) === 90
+            }),
+            0,
+            duration
+          )
           lastInsideValueRef.current = time
           handleSeek(time)
         }
@@ -101,19 +99,18 @@ export function useMobileSeekbarTouch({
 
       const innerBar = visual.querySelector('[data-player-seekbar-inner]') as HTMLElement | null
       const rect = innerBar ? innerBar.getBoundingClientRect() : visual.getBoundingClientRect()
-      const isVertical = rect.height > rect.width
-      let ratio = 0
-
-      if (!isVertical) {
-        const x = clamp(touch.clientX, rect.left, rect.right)
-        ratio = rect.width > 0 ? clamp((x - rect.left) / rect.width, 0, 1) : 0
-        if (Math.abs(rotationDeg) === 90 && rotationDeg === -90) ratio = 1 - ratio
-      } else {
-        const raw = rect.height > 0 ? clamp((touch.clientY - rect.top) / rect.height, 0, 1) : 0
-        ratio = Math.abs(rotationDeg) === 90 && rotationDeg === -90 ? 1 - raw : raw
-      }
-
-      const time = clamp(ratio * duration, 0, duration)
+      const time = clamp(
+        getSeekTimeFromPoint({
+          rect,
+          clientX: touch.clientX,
+          clientY: touch.clientY,
+          duration,
+          rotationDeg,
+          isRotated: Math.abs(rotationDeg) === 90
+        }),
+        0,
+        duration
+      )
       const insideX = touch.clientX >= rect.left && touch.clientX <= rect.right
       const insideY = touch.clientY >= rect.top && touch.clientY <= rect.bottom
       pointerInsideRef.current = insideY

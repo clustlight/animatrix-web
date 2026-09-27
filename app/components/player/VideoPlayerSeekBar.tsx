@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import type { RefObject } from 'react'
-import { clamp } from './playerUtils'
+import { clamp, getSeekTimeFromPoint } from './playerUtils'
 
 type VideoPlayerSeekBarProps = {
   currentTime: number
@@ -98,27 +98,17 @@ export default function VideoPlayerSeekBar({
         if (dist > 300) return
       }
 
-      // Use the visible bounding box of the bar to compute ratio.
-      // If the bar is visually horizontal, use clientX vs rect.left/width.
-      // If the bar is visually vertical (rotated), use clientY vs rect.top/height
-      let ratio = 0
       // Only consider rotation-based inversion when a rotation container is actually provided
       const isRotated =
         !!(rotationContainerRef && rotationContainerRef.current) && Math.abs(rotationDeg) === 90
-
-      if (rect.width >= rect.height) {
-        ratio = rect.width > 0 ? clamp((clientX - rect.left) / rect.width, 0, 1) : 0
-        // Invert horizontal mapping only when the parent/container is rotated
-        if (isRotated && rotationDeg === -90) ratio = 1 - ratio
-      } else if (clientY != null) {
-        // Vertical bar case (likely due to rotation)
-        const raw = rect.height > 0 ? clamp((clientY - rect.top) / rect.height, 0, 1) : 0
-        // For a container rotated 90deg clockwise, top -> left (0%), bottom -> right (100%).
-        // For -90deg (counterclockwise), top -> right (100%), so invert when rotated.
-        ratio = isRotated && rotationDeg === -90 ? 1 - raw : raw
-      }
-
-      const nextValue = ratio * (duration || 0)
+      const nextValue = getSeekTimeFromPoint({
+        rect,
+        clientX,
+        clientY,
+        duration,
+        rotationDeg,
+        isRotated
+      })
 
       // update prev accepted client coords
       prevClientRef.current = { x: clientX, y: clientY ?? prev?.y ?? 0 }
