@@ -14,6 +14,7 @@ import {
 } from 'react-icons/md'
 import VideoPlayerSeekBar from './VideoPlayerSeekBar'
 import VideoPlayerVolumeBar from './VideoPlayerVolumeBar'
+import { formatPlayerTime } from './playerUtils'
 
 // Props for video player controls
 type VideoPlayerControlsProps = {
@@ -36,13 +37,6 @@ type VideoPlayerControlsProps = {
 }
 
 const PLAYBACK_RATES = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0]
-
-// Format seconds to MM:SS
-function formatTime(sec: number) {
-  const m = Math.floor(sec / 60)
-  const s = Math.floor(sec % 60)
-  return `${m}:${s.toString().padStart(2, '0')}`
-}
 
 // Playback rate selection
 const PlaybackRateControl: React.FC<{
@@ -285,7 +279,8 @@ export default function VideoPlayerControls({
                   : 'text-base text-white select-none'
               }
             >
-              {formatTime(currentTime)} / {formatTime(duration)}
+              {formatPlayerTime(currentTime, currentTime >= 3600)} /{' '}
+              {formatPlayerTime(duration, duration >= 3600)}
             </span>
             {/* Volume shown on desktop only */}
             {!isMobileOrTablet && (

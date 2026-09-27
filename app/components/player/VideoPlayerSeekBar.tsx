@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import type { RefObject } from 'react'
+import { clamp } from './playerUtils'
 
 type VideoPlayerSeekBarProps = {
   currentTime: number
@@ -68,8 +69,6 @@ export default function VideoPlayerSeekBar({
     }
     lastRotationDegRef.current = rotationDeg
   }, [rotationDeg, seeking])
-
-  const clamp = (val: number, min: number, max: number) => Math.max(min, Math.min(max, val))
 
   const updateSeekFromClientX = useCallback(
     (clientX: number, clientY?: number) => {
@@ -291,6 +290,7 @@ export default function VideoPlayerSeekBar({
   const trackClass = expanded ? 'h-3' : 'h-1.5'
   const thumbClass = expanded ? 'w-6 h-6' : 'w-3 h-3'
   const thumbHalfPx = expanded ? 12 : 6
+  const thumbDiameterPx = expanded ? 24 : 12
 
   return (
     <div
@@ -312,7 +312,9 @@ export default function VideoPlayerSeekBar({
       />
       <div
         className={`absolute top-1/2 -translate-y-1/2 ${thumbClass} rounded-full bg-orange-400 shadow pointer-events-none`}
-        style={{ left: `calc(${progressPercent}% - ${thumbHalfPx}px)` }}
+        style={{
+          left: `clamp(0px, calc(${progressPercent}% - ${thumbHalfPx}px), calc(100% - ${thumbDiameterPx}px))`
+        }}
       />
     </div>
   )

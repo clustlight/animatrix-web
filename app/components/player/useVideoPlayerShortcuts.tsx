@@ -11,16 +11,16 @@ import {
   MdVolumeUp
 } from 'react-icons/md'
 import type ReactPlayer from 'react-player'
+import { clamp } from './playerUtils'
 
 type UseVideoPlayerShortcutsProps = {
   playerRef: React.RefObject<ReactPlayer>
+  currentTimeRef: { current: number }
   duration: number
   setPlaying: React.Dispatch<React.SetStateAction<boolean>>
   setVolume: React.Dispatch<React.SetStateAction<number>>
   toggleFullscreen: () => void
-  shortcutActiveSetter: (active: boolean) => void
   setPlaybackRate: React.Dispatch<React.SetStateAction<number>>
-  playbackRate: number
   onActionIcon?: (icon: React.ReactNode, text?: string) => void
   disable?: boolean
 }
@@ -31,19 +31,15 @@ const VOLUME_STEP = 0.05
 const PLAYBACK_RATE_STEP = 0.1
 const PLAYBACK_RATE_MIN = 0.3
 const PLAYBACK_RATE_MAX = 2.0
-const SHORTCUT_ACTIVE_TIMEOUT = 100
-
-const clamp = (val: number, min: number, max: number) => Math.max(min, Math.min(max, val))
 
 export function useVideoPlayerShortcuts({
   playerRef,
+  currentTimeRef,
   duration,
   setPlaying,
   setVolume,
   toggleFullscreen,
-  shortcutActiveSetter,
   setPlaybackRate,
-  playbackRate,
   onActionIcon,
   disable = false
 }: UseVideoPlayerShortcutsProps) {
@@ -53,7 +49,12 @@ export function useVideoPlayerShortcuts({
     const seek = (seconds: number, icon: React.ReactNode) => {
       const player = playerRef.current
       if (!player) return
-      player.seekTo(player.getCurrentTime() + seconds, 'seconds')
+      const target =
+        duration > 0
+          ? clamp(currentTimeRef.current + seconds, 0, duration)
+          : Math.max(0, currentTimeRef.current + seconds)
+      currentTimeRef.current = target
+      player.seekTo(target, 'seconds')
       onActionIcon?.(icon)
     }
 
@@ -159,8 +160,6 @@ export function useVideoPlayerShortcuts({
         if (match(e)) {
           e.preventDefault()
           action(e)
-          shortcutActiveSetter(true)
-          setTimeout(() => shortcutActiveSetter(false), SHORTCUT_ACTIVE_TIMEOUT)
           break
         }
       }
@@ -170,13 +169,12 @@ export function useVideoPlayerShortcuts({
     return () => window.removeEventListener('keydown', handleKeyDown, { capture: true })
   }, [
     playerRef,
+    currentTimeRef,
     duration,
     setPlaying,
     setVolume,
     toggleFullscreen,
-    shortcutActiveSetter,
     setPlaybackRate,
-    playbackRate,
     onActionIcon,
     disable
   ])

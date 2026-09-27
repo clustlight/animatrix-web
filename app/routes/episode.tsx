@@ -1,6 +1,6 @@
 import type { Episode, Season, Series } from '../types'
 import type { Route } from './+types/episode'
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router'
 import VideoPlayer from '~/components/player/VideoPlayer'
 import { getApiBaseUrl } from '../lib/config'
@@ -201,6 +201,7 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
   const navigate = useNavigate()
   const [autoPlay, setAutoPlay] = useState(false)
   const [startFullscreen, setStartFullscreen] = useState(false)
+  const advancingEpisodeRef = useRef(false)
 
   // 次のエピソード・シーズン判定ロジック
   const getNextEpisode = () => {
@@ -274,8 +275,10 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
 
   // 動画終了時のコールバック
   const handleVideoEnded = (opts?: { keepFullscreen?: boolean }) => {
+    if (advancingEpisodeRef.current) return
     const next = getNextEpisode()
     if (next && next.episodeId) {
+      advancingEpisodeRef.current = true
       // load next episode in-place so the player DOM stays mounted and fullscreen is preserved
       loadEpisodeInPlace(next.episodeId, { keepFullscreen: !!opts?.keepFullscreen, autoPlay: true })
     }
@@ -283,6 +286,7 @@ export default function Episode({ loaderData }: { loaderData: LoaderData }) {
 
   // ページ遷移後に自動再生する
   useEffect(() => {
+    advancingEpisodeRef.current = false
     // location.state から autoPlay と keepFullscreen を取得
     const state = window.history.state && window.history.state.usr
     setAutoPlay(state && state.autoPlay === true)
